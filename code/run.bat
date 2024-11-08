@@ -1,3 +1,5 @@
 @echo off
 
-call build\sdl_main.exe
+pushd build
+call sdl_main.exe
+popd

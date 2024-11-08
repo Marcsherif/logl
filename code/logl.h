@@ -1,6 +1,7 @@
 #if !defined(LOGL_H)
 
 #include "logl_platform.h"
+#include "logl_shader.h"
 
 #define Minimum(A, B) ((A < B) ? (A) : (B))
 #define Maximum(A, B) ((A > B) ? (A) : (B))

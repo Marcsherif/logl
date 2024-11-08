@@ -9,7 +9,11 @@
 #include "glad.c"
 #include "logl.h"
 
+void Quit(SDL_Window *window, SDL_GLContext context);
 #define err(msg) Quit(window, context); ThrowError(msg);
+
+#include "logl_shader.cpp"
+
 
 struct myWindow
 {
@@ -52,7 +56,7 @@ void Quit(SDL_Window *window, SDL_GLContext context)
     SDL_Quit();
 }
 
-b32 ProcessInput(SDL_Window* window, SDL_GLContext context, SDL_Event e, myWindow *myWindow)
+b32 ProcessInput(SDL_Window* window, SDL_GLContext context, SDL_Event e, myWindow *myWindow, f32 *move)
 {
     b32 quit = false;
     if(e.type == SDL_EVENT_KEY_DOWN)
@@ -79,6 +83,18 @@ b32 ProcessInput(SDL_Window* window, SDL_GLContext context, SDL_Event e, myWindo
                 quit = true;
                 Quit(window, context);
             } break;
+
+            case SDLK_D:
+            {
+                *move += 0.4;
+                log("D KEY PRESSED");
+            } break;
+
+            case SDLK_A:
+            {
+                *move -= 0.4;
+                log("A KEY PRESSED");
+            } break;
         }
     }
 
@@ -103,6 +119,7 @@ void HandleEvent(SDL_Window* window, SDL_Event e, myWindow *myWindow)
         case SDL_EVENT_WINDOW_MOUSE_ENTER:
             myWindow->MouseFocus = true;
             myWindow->updateCaption = true;
+            log("mouse focused!");
             break;
 
         case SDL_EVENT_WINDOW_MOUSE_LEAVE:
@@ -141,93 +158,28 @@ void HandleEvent(SDL_Window* window, SDL_Event e, myWindow *myWindow)
     }
 }
 
-const char *vertexShaderSource = "#version 330 core\n"
-    "layout (location = 0) in vec3 aPos;\n"
-    "void main()\n"
-    "{\n"
-    "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-    "}\0";
-
-const char *fragmentShaderSourceOrange = "#version 330 core\n"
-    "out vec4 FragColor;\n"
-    "void main()\n"
-    "{\n"
-    "    FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-    "}\0";
-
-const char *fragmentShaderSourceRed = "#version 330 core\n"
-    "out vec4 FragColor;\n"
-    "void main()\n"
-    "{\n"
-    "    FragColor = vec4(0.8f, 0.0f, 0.0f, 1.0f);\n"
-    "}\0";
-
-u32 GetShader(SDL_Window *window, SDL_GLContext context, const char *fragmentShaderSource)
-{
-    u32 vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
-
-    i32  success;
-    char infoLog[512];
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if(!success)
-    {
-        glGetShaderInfoLog(vertexShader, sizeof(infoLog), NULL, infoLog);
-        err("ERROR::SHADER::VERTEX::COMPILATION_FAILED");
-    }
-
-    u32 fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-
-    success = 0;
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if(!success)
-    {
-        glGetShaderInfoLog(fragmentShader, sizeof(infoLog), NULL, infoLog);
-        err("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED");
-    }
-
-    u32 shaderProgram;
-    shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-
-    success = 0;
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if(!success) {
-        glGetProgramInfoLog(shaderProgram, sizeof(infoLog), NULL, infoLog);
-        err("ERROR::LINKING::SHADERS::FAILED");
-    }
-
-    return shaderProgram;
-}
-
 f32 triangleVertices[] = {
-    -0.8f, -0.8f, 0.0f,
-    0.0f, 0.0f, 0.0f,
-    -0.4f,  0.2f, 0.0f,
+    -0.8f, -0.8f, 0.0f,  8.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f,    0.0f, 2.0f, 0.0f,
+    -0.4f,  0.2f, 0.0f,  0.0f, 0.0f, 0.0f,
 
-    0.8f, 0.8f, 0.0f,
-    0.0f, 0.0f, 0.0f,
-    0.4f,  -0.2f, 0.0f
+    0.8f, 0.8f, 0.0f,  8.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f,  0.0f, 2.0f, 0.0f,
+    0.4f,  -0.2f, 0.0,  0.0f, 0.0f, 0.0f
 };
 
 f32 triangleVertices1[] = {
-    -0.8f, -0.8f, 0.0f,
-    0.0f, 0.0f, 0.0f,
-    -0.4f,  0.2f, 0.0f
+    -0.8f, -0.8f, 0.0f,    1.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f,      0.0f, 0.0f, 0.0f,
+    -0.4f,  0.2f, 0.0f,    0.0f, 0.0f, 0.0f
 };
 
-f32 triangleVertices2[] = {
-    0.8f, 0.8f, 0.0f,
-    0.0f, 0.0f, 0.0f,
-    0.4f,  -0.2f, 0.0f
+
+f32 middleTriangleVertices[] = {
+    // positions         // colors
+     0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,   // bottom right
+    -0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,   // bottom left
+     0.0f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f    // top
 };
 
 u32 GetVAOwithoutEBO(VABO *vabo, f32 *vertices, u32 nVerts)
@@ -243,8 +195,11 @@ u32 GetVAOwithoutEBO(VABO *vabo, f32 *vertices, u32 nVerts)
     glBindBuffer(GL_ARRAY_BUFFER, vabo->VBO[vabo->nVBO++]);
     glBufferData(GL_ARRAY_BUFFER, nVerts*sizeof(*vertices + 0), vertices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3*sizeof(float)));
+    glEnableVertexAttribArray(1);
 
     return vaoIndex;
 }
@@ -277,8 +232,11 @@ u32 GetVAOwithEBO(VABO *vabo, f32 *vertices, u32 nVerts, u32 *indices, u32 nIndi
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vabo->EBO[vabo->nEBO++]);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, nIndices*sizeof(*indices + 0), indices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3*sizeof(float)));
+    glEnableVertexAttribArray(1);
 
     return vaoIndex;
 }
@@ -308,8 +266,7 @@ int main()
     vabo.VBO = PushArray(&arena, 4, u32);
     vabo.EBO = PushArray(&arena, 4, u32);
 
-    u32 orangeShader = 0;
-    u32 yellowShader = 0;
+    u32 shader = 0;
     if(!window)
     {
         ThrowError("Failed to initialized Window!");
@@ -328,31 +285,39 @@ int main()
 
         glViewport(0, 0, width, height);
 
-        orangeShader = GetShader(window, context, fragmentShaderSourceOrange);
-        yellowShader = GetShader(window, context, fragmentShaderSourceRed);
+        char *vertShaderPath = "../shaders/vert.glsl";
+        char *fragShaderPath = "../shaders/frag.glsl";
+        shader = Shader(window, context, vertShaderPath, fragShaderPath);
 
-        u32 nVerts1 = ArrayCount(triangleVertices1);
-        u32 triangle1 = GetVAOwithoutEBO(&vabo, triangleVertices1, nVerts1);
+        u32 nVerts1 = ArrayCount(middleTriangleVertices);
+        u32 triangle1Verts = GetVAOwithoutEBO(&vabo, middleTriangleVertices, nVerts1);
 
-        u32 nVerts2 = ArrayCount(triangleVertices2);
-        u32 triangle2 = GetVAOwithoutEBO(&vabo, triangleVertices2, nVerts2);
+        u32 nVerts2 = ArrayCount(triangleVertices1);
+        u32 triangle2 = GetVAOwithoutEBO(&vabo, triangleVertices1, nVerts2);
 
-        u32 nSquareVerts = ArrayCount(squareVertices);
-        u32 nIndices = ArrayCount(squareIndices);
-        u32 rectangle = GetVAOwithEBO(&vabo, squareVertices, nSquareVerts,
-                                      squareIndices, nIndices);
+//        u32 nSquareVerts = ArrayCount(squareVertices);
+//        u32 nIndices = ArrayCount(squareIndices);
+//        u32 rectangle = GetVAOwithEBO(&vabo, squareVertices, nSquareVerts,
+//                                      squareIndices, nIndices);
+
+        i32 nrAttributes;
+        glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nrAttributes);
+        log("Maximum nr of vertex attributes supported: %d\n", nrAttributes);
 
         myWindow myWindow;
         SDL_Event e;
         b32 quit = false;
+        //u64 lastCycleCount = SDL_GetPerformanceCounter();
+        u64 startTime = SDL_GetPerformanceCounter();
         while(!quit)
         {
+            f32 move = 0;
             while(SDL_PollEvent(&e))
             {
                 if(e.type == SDL_EVENT_QUIT) quit = true;
 
                 HandleEvent(window, e, &myWindow);
-                quit = ProcessInput(window, context, e, &myWindow);
+                quit = ProcessInput(window, context, e, &myWindow, &move);
             }
 
             if(!myWindow.Minimized)
@@ -360,23 +325,36 @@ int main()
                 glClearColor(0x18 / 255.0f, 0x18 / 255.0f, 0x18 / 255.0f, 0xFF);
                 glClear(GL_COLOR_BUFFER_BIT);
 
-#if 1
-                glUseProgram(orangeShader);
-                glBindVertexArray(vabo.VAO[rectangle]);
+#if 0
+                glUseProgram(shader1);
                 glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+                glBindVertexArray(vabo.VAO[rectangle]);
                 glDrawElements(GL_TRIANGLES, vabo.count[rectangle], GL_UNSIGNED_INT, 0);
 
-                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-                glUseProgram(orangeShader);
-                glBindVertexArray(vabo.VAO[triangle1]);
-                glDrawArrays(GL_TRIANGLES, 0, vabo.count[triangle1]);
-
-                glUseProgram(yellowShader);
-                glBindVertexArray(vabo.VAO[triangle2]);
-                glDrawArrays(GL_TRIANGLES, 0, vabo.count[triangle2]);
 #endif
+                u64 currTime = SDL_GetPerformanceCounter();
+                u64 frequency = SDL_GetPerformanceFrequency();
+                f32 timeValue = (f32)(((currTime - startTime) / frequency) / (10.0f));
+
+                UseShader(shader);
+                if(move)
+                {
+                    SetFloat(shader, "offset", timeValue/10 * move);
+                    log("move: %f", move);
+                }
+                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+                glBindVertexArray(vabo.VAO[triangle1Verts]);
+                glDrawArrays(GL_TRIANGLES, 0, vabo.count[triangle1Verts]);
 
                 SDL_GL_SwapWindow(window);
+
+#if 0
+                u64 endCycleCount = SDL_GetPerformanceCounter();
+                u64 cyclesElapsed = endCycleCount - lastCycleCount;
+                lastCycleCount = endCycleCount;
+
+                //r64 MCPF = (real64)(CyclesElapsed / (1000.0f * 1000.0f));
+#endif
             }
         }
 
@@ -385,8 +363,7 @@ int main()
     // TODO: de-allocate resources
     glDeleteVertexArrays(vabo.nVAO, vabo.VAO);
     glDeleteBuffers(vabo.nVBO, vabo.VBO);
-    glDeleteProgram(orangeShader);
-    glDeleteProgram(yellowShader);
+    glDeleteProgram(shader);
 
     Quit(window, context);
     return 0;

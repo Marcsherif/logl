@@ -1,0 +1,91 @@
+internal u32
+Shader(SDL_Window *window, SDL_GLContext context, const char *vertexPath, const char *fragmentPath)
+{
+    // TODO: Load Files and error check, and do hot realoding, and do a hash
+    SDL_IOStream *vertFile = SDL_IOFromFile(vertexPath, "rb");
+    SDL_IOStream *fragFile = SDL_IOFromFile(fragmentPath, "rb");
+
+    const i64 vertFileSize = SDL_GetIOSize(vertFile);
+    const i64 fragFileSize = SDL_GetIOSize(fragFile);
+
+    char *vertPtr = (char *)VirtualAlloc(0, vertFileSize, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+    char *fragPtr = (char *)VirtualAlloc(0, fragFileSize, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+
+    size_t vertFileRead = SDL_ReadIO(vertFile, vertPtr, vertFileSize);
+    size_t fragFileRead = SDL_ReadIO(fragFile, fragPtr, fragFileSize);
+
+    SDL_CloseIO(vertFile);
+    SDL_CloseIO(fragFile);
+
+    u32 vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertPtr, NULL);
+    glCompileShader(vertexShader);
+
+    i32  success;
+    char infoLog[512];
+    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+    if(!success)
+    {
+        glGetShaderInfoLog(vertexShader, sizeof(infoLog), NULL, infoLog);
+        log(infoLog);
+        err(infoLog);
+    }
+
+    u32 fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &fragPtr, NULL);
+    glCompileShader(fragmentShader);
+
+    success = 0;
+    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+    if(!success)
+    { glGetShaderInfoLog(fragmentShader, sizeof(infoLog), NULL, infoLog);
+        log(infoLog);
+        err(infoLog);
+    }
+
+    u32 shaderProgram;
+    shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
+    success = 0;
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    if(!success) {
+        glGetProgramInfoLog(shaderProgram, sizeof(infoLog), NULL, infoLog);
+        log(infoLog);
+        err(infoLog);
+    }
+
+    VirtualFree(vertPtr, 0, MEM_RELEASE);
+    VirtualFree(fragPtr, 0, MEM_RELEASE);
+
+    return shaderProgram;
+}
+
+internal void
+UseShader(u32 Id)
+{
+    glUseProgram(Id);
+}
+
+internal void
+SetBool(u32 Id, const char *name, b32 value)
+{
+    glUniform1i(glGetUniformLocation(Id, name), (int)value);
+}
+
+internal void
+SetInt(u32 Id, const char *name, i32 value)
+{
+    glUniform1i(glGetUniformLocation(Id, name), value);
+}
+
+internal void
+SetFloat(u32 Id, const char *name, f32 value)
+{
+    glUniform1f(glGetUniformLocation(Id, name), value);
+}

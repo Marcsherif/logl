@@ -17,7 +17,7 @@ typedef uint64_t u64;
 typedef size_t memory_index;
 
 typedef float f32;
-typedef double r64;
+typedef double f64;
 
 #define internal static
 #define local_persist static
@@ -52,6 +52,17 @@ void ThrowError(const char *message)
 {
     MessageBoxA(nullptr, message, "LOGL ERROR", MB_OK | MB_ICONERROR);
     __debugbreak();
+}
+
+void log(const char* msg, ...)
+{
+    char buf[4096];
+    va_list vl;
+
+    va_start(vl, msg);
+    vsnprintf(buf, sizeof(buf), msg, vl);
+    va_end(vl);
+    printf("%s\n", buf);
 }
 
 #define LOGL_PLATFORM_H
