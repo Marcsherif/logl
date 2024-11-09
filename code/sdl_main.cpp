@@ -5,8 +5,15 @@
 
 #include <SDL3/SDL.h>
 #include <glad/glad.h>
+#include <glad/glad.c>
 
-#include "glad.c"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image/stb_image.h>
+
 #include "logl.h"
 
 void Quit(SDL_Window *window, SDL_GLContext context);
@@ -56,7 +63,8 @@ void Quit(SDL_Window *window, SDL_GLContext context)
     SDL_Quit();
 }
 
-b32 ProcessInput(SDL_Window* window, SDL_GLContext context, SDL_Event e, myWindow *myWindow, f32 *move)
+b32 ProcessInput(SDL_Window* window, SDL_GLContext context, SDL_Event e,
+                 myWindow *myWindow, f32 *moveX, f32 *moveY, f32 *alpha)
 {
     b32 quit = false;
     if(e.type == SDL_EVENT_KEY_DOWN)
@@ -80,20 +88,43 @@ b32 ProcessInput(SDL_Window* window, SDL_GLContext context, SDL_Event e, myWindo
 
             case SDLK_ESCAPE:
             {
+                log("ESCAPE PRESSED");
                 quit = true;
                 Quit(window, context);
             } break;
 
             case SDLK_D:
             {
-                *move += 0.4;
+                *moveX += 0.2;
                 log("D KEY PRESSED");
             } break;
 
             case SDLK_A:
             {
-                *move -= 0.4;
+                *moveX -= 0.2;
                 log("A KEY PRESSED");
+            } break;
+
+            case SDLK_W:
+            {
+                *moveY += 0.2;
+                log("D KEY PRESSED");
+            } break;
+
+            case SDLK_S:
+            {
+                *moveY -= 0.2;
+                log("A KEY PRESSED");
+            } break;
+
+            case SDLK_DOWN:
+            {
+                *alpha -= 0.1;
+            } break;
+
+            case SDLK_UP:
+            {
+                *alpha += 0.1;
             } break;
         }
     }
@@ -151,9 +182,10 @@ void HandleEvent(SDL_Window* window, SDL_Event e, myWindow *myWindow)
     }
     if(myWindow->updateCaption)
     {
-        char caption[120];
-        if(myWindow->MouseFocus) strcat_s(caption, "SDL Tutorial - MouseFocus: On"); else strcat_s(caption, "SDL Tutorial - MouseFocus: Off");
-        if(myWindow->KeyboardFocus) strcat_s(caption,"  KeyboardFocus: On"); else strcat_s(caption,"  KeyboardFocus: Off");
+        const u32 bufSize = 120;
+        char caption[bufSize] = {};
+        if(myWindow->MouseFocus) SDL_strlcat(caption, "SDL Tutorial - MouseFocus: On", bufSize); else SDL_strlcat(caption, "SDL Tutorial - MouseFocus: Off", bufSize);
+        if(myWindow->KeyboardFocus) SDL_strlcat(caption,"  KeyboardFocus: On", bufSize); else SDL_strlcat(caption,"  KeyboardFocus: Off", bufSize);
         SDL_SetWindowTitle(window, caption);
     }
 }
@@ -182,6 +214,12 @@ f32 middleTriangleVertices[] = {
      0.0f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f    // top
 };
 
+f32 texCoords[] = {
+    0.0f, 0.0f,  // lower-left corner
+    1.0f, 0.0f,  // lower-right corner
+    0.5f, 1.0f   // top-center corner
+};
+
 u32 GetVAOwithoutEBO(VABO *vabo, f32 *vertices, u32 nVerts)
 {
     u32 vaoIndex = vabo->nVAO;
@@ -195,24 +233,69 @@ u32 GetVAOwithoutEBO(VABO *vabo, f32 *vertices, u32 nVerts)
     glBindBuffer(GL_ARRAY_BUFFER, vabo->VBO[vabo->nVBO++]);
     glBufferData(GL_ARRAY_BUFFER, nVerts*sizeof(*vertices + 0), vertices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3*sizeof(float)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3*sizeof(float)));
     glEnableVertexAttribArray(1);
 
     return vaoIndex;
 }
 
 f32 squareVertices[] = {
-    0.5f,  0.5f, 0.0f,
-    0.5f, -0.5f, 0.0f,
-    -0.5f, -0.5f, 0.0f,
-    -0.5f,  0.5f, 0.0f
+    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+     0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
 };
-u32 squareIndices[] = {
-    0, 1, 3,
-    1, 2, 3
+glm::vec3 cubePositions[] = {
+    glm::vec3( 0.0f,  0.0f,  0.0f),
+    glm::vec3( 2.0f,  5.0f, -15.0f),
+    glm::vec3(-1.5f, -2.2f, -2.5f),
+    glm::vec3(-3.8f, -2.0f, -12.3f),
+    glm::vec3( 2.4f, -0.4f, -3.5f),
+    glm::vec3(-1.7f,  3.0f, -7.5f),
+    glm::vec3( 1.3f, -2.0f, -2.5f),
+    glm::vec3( 1.5f,  2.0f, -2.5f),
+    glm::vec3( 1.5f,  0.2f, -1.5f),
+    glm::vec3(-1.3f,  1.0f, -1.5f)
 };
 
 u32 GetVAOwithEBO(VABO *vabo, f32 *vertices, u32 nVerts, u32 *indices, u32 nIndices)
@@ -232,13 +315,106 @@ u32 GetVAOwithEBO(VABO *vabo, f32 *vertices, u32 nVerts, u32 *indices, u32 nIndi
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vabo->EBO[vabo->nEBO++]);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, nIndices*sizeof(*indices + 0), indices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3*sizeof(float)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3*sizeof(float)));
     glEnableVertexAttribArray(1);
 
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6*sizeof(float)));
+    glEnableVertexAttribArray(2);
+
     return vaoIndex;
+}
+
+u32 GetTexture(char *texturePath, u32 format, u32 wrappingMethod)
+{
+    u32 texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrappingMethod);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrappingMethod);
+
+    //f32 bColor[] = {1.0f, 0.0f, 0.0f, 1.0f};
+    //glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, bColor);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    i32 imageWidth, imageHeight, nrChannels;
+    u8 *data = stbi_load(texturePath, &imageWidth, &imageHeight, &nrChannels, 0);
+    stbi_set_flip_vertically_on_load(true);
+    if(data)
+    {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, imageWidth, imageHeight, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+        stbi_image_free(data);
+    }
+    else
+    {
+        log("Failed to load texture");
+    }
+
+    return texture;
+}
+
+f32 GetAlphaBlend(f32 frequency)
+{
+    f32 time = (f32)SDL_GetPerformanceCounter() / (f32)SDL_GetPerformanceFrequency();
+    f32 alphaBlend = ((f32)sin(time * frequency) + 1.0f) / 2.0f;
+    return alphaBlend;
+}
+
+f32 GetSecondsElapsed(u64 lastCycleCount, u64 frequency)
+{
+    u64 currTime = SDL_GetPerformanceCounter();
+    f32 timeValue = (f32)((currTime - lastCycleCount) / (f32)frequency);
+    return timeValue;
+}
+
+void PythagoreanTree(SDL_Window *window, glm::mat4 transform, VABO vabo, u32 object, int depth, u32 shader)
+{
+    if (depth == 0) return;
+
+    float scaling = 0.70710678f;
+
+    SetUniform(shader, "transform", transform);
+    glDrawElements(GL_TRIANGLES, vabo.count[object], GL_UNSIGNED_INT, 0);
+
+    glm::mat4 leftTransform = transform;
+    leftTransform = glm::translate(leftTransform, glm::vec3(-0.5f, 1.0f, 0.0f));
+    leftTransform = glm::rotate(leftTransform, glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    leftTransform = glm::scale(leftTransform, glm::vec3(scaling, scaling, 1.0f));
+
+    SetUniform(shader, "transform", leftTransform);
+    glDrawElements(GL_TRIANGLES, vabo.count[object], GL_UNSIGNED_INT, 0);
+
+    glm::mat4 rightTransform = transform;
+    rightTransform = glm::translate(rightTransform, glm::vec3(0.5f, 1.0f, 0.0f));
+    rightTransform = glm::rotate(rightTransform, glm::radians(-45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    rightTransform = glm::scale(rightTransform, glm::vec3(scaling, scaling, 1.0f));
+
+    SetUniform(shader, "transform", rightTransform);
+    glDrawElements(GL_TRIANGLES, vabo.count[object], GL_UNSIGNED_INT, 0);
+
+    PythagoreanTree(window, leftTransform, vabo, object, depth - 1, shader);
+    PythagoreanTree(window, rightTransform, vabo, object, depth - 1, shader);
+}
+
+void DrawPythagoreanTree(SDL_Window *window, glm::mat4 initialTransform, VABO vabo, u32 object, int maxDepth, u32 shader)
+{
+    for (int depth = 0; depth < maxDepth; ++depth) {
+        glm::mat4 transform = initialTransform;
+        SetUniform(shader, "transform", transform);
+
+        // NOTE(marc): bad implementation, calculates the entire thing at every level
+        PythagoreanTree(window, transform, vabo, object, depth, shader);
+
+        SDL_Delay(10);
+
+        SDL_GL_SwapWindow(window);
+    }
 }
 
 int main()
@@ -248,8 +424,8 @@ int main()
         ThrowError("Failed to initialized SDL3!");
     }
 
-    i32 width = 1920;
-    i32 height = 1080;
+#define width 1920
+#define height 1080
     SDL_Window *window = SDL_CreateWindow("Hello, world!", width, height,
                                           SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
     SDL_GLContext context = 0;
@@ -295,10 +471,21 @@ int main()
         u32 nVerts2 = ArrayCount(triangleVertices1);
         u32 triangle2 = GetVAOwithoutEBO(&vabo, triangleVertices1, nVerts2);
 
-//        u32 nSquareVerts = ArrayCount(squareVertices);
-//        u32 nIndices = ArrayCount(squareIndices);
-//        u32 rectangle = GetVAOwithEBO(&vabo, squareVertices, nSquareVerts,
-//                                      squareIndices, nIndices);
+        u32 nSquareVerts = ArrayCount(squareVertices);
+        u32 rectangle = GetVAOwithoutEBO(&vabo, squareVertices, nSquareVerts);
+        glEnable(GL_DEPTH_TEST);
+
+        u32 container = GetTexture("../data/container.jpg", GL_RGB, GL_MIRRORED_REPEAT);
+        u32 awesomeFace = GetTexture("../data/awesomeface.png", GL_RGBA, GL_MIRRORED_REPEAT);
+        UseShader(shader);
+        SetUniform(shader, "texture1", 0);
+        SetUniform(shader, "texture2", 1);
+
+        glm::mat4 view = glm::mat4(1.0f);
+        view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+
+        glm::mat4 projection;
+        projection = glm::perspective(glm::radians(45.0f), f32(3), 0.1f, 100.0f);
 
         i32 nrAttributes;
         glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nrAttributes);
@@ -307,53 +494,66 @@ int main()
         myWindow myWindow;
         SDL_Event e;
         b32 quit = false;
-        //u64 lastCycleCount = SDL_GetPerformanceCounter();
-        u64 startTime = SDL_GetPerformanceCounter();
+        u64 lastCycleCount = SDL_GetPerformanceCounter();
+        u64 frequency = SDL_GetPerformanceFrequency();
+        f32 moveX = 0;
+        f32 moveY = 0;
+        f32 alpha = 0;
         while(!quit)
         {
-            f32 move = 0;
             while(SDL_PollEvent(&e))
             {
                 if(e.type == SDL_EVENT_QUIT) quit = true;
 
                 HandleEvent(window, e, &myWindow);
-                quit = ProcessInput(window, context, e, &myWindow, &move);
+                quit = ProcessInput(window, context, e, &myWindow, &moveX, &moveY, &alpha);
             }
 
             if(!myWindow.Minimized)
             {
                 glClearColor(0x18 / 255.0f, 0x18 / 255.0f, 0x18 / 255.0f, 0xFF);
-                glClear(GL_COLOR_BUFFER_BIT);
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-#if 0
-                glUseProgram(shader1);
-                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-                glBindVertexArray(vabo.VAO[rectangle]);
-                glDrawElements(GL_TRIANGLES, vabo.count[rectangle], GL_UNSIGNED_INT, 0);
-
-#endif
-                u64 currTime = SDL_GetPerformanceCounter();
-                u64 frequency = SDL_GetPerformanceFrequency();
-                f32 timeValue = (f32)(((currTime - startTime) / frequency) / (10.0f));
+                f32 timeValue = GetSecondsElapsed(lastCycleCount, frequency);
+                f32 ab = GetAlphaBlend(1.0f);
 
                 UseShader(shader);
-                if(move)
+                SetUniform(shader, "alpha", 0.2f);
+                SetUniform(shader, "view", view);
+                SetUniform(shader, "projection", projection);
+
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, container);
+                glActiveTexture(GL_TEXTURE1);
+                glBindTexture(GL_TEXTURE_2D, awesomeFace);
+
+                glBindVertexArray(vabo.VAO[rectangle]);
+                for(u32 i = 0; i < 10; ++i)
                 {
-                    SetFloat(shader, "offset", timeValue/10 * move);
-                    log("move: %f", move);
+                    glm::mat4 model = glm::mat4(1.0f);
+                    model = glm::translate(model, cubePositions[i]);
+                    f32 angle = 20.0f * i;
+                    model = glm::rotate(model, angle, glm::vec3(1.0f, 0.0f, 0.0f));
+                    if(i % 3 == 0 || i == 0)
+                    {
+                        model = glm::rotate(model, tan(timeValue), glm::vec3(1.0f, 1.0f, 0.0f));
+                    }
+                    SetUniform(shader, "model", model);
+
+                    glDrawArrays(GL_TRIANGLES, 0, vabo.count[rectangle]);
                 }
-                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-                glBindVertexArray(vabo.VAO[triangle1Verts]);
-                glDrawArrays(GL_TRIANGLES, 0, vabo.count[triangle1Verts]);
 
                 SDL_GL_SwapWindow(window);
-
 #if 0
+                // TODO: track fps
                 u64 endCycleCount = SDL_GetPerformanceCounter();
                 u64 cyclesElapsed = endCycleCount - lastCycleCount;
                 lastCycleCount = endCycleCount;
 
-                //r64 MCPF = (real64)(CyclesElapsed / (1000.0f * 1000.0f));
+                f64 MCPF = (f64)cyclesElapsed / (f64)frequency;
+                f64 FPS = 1.0f/MCPF;
+
+                log("%.02ff/s,  %.02fmc/f\n", FPS, MCPF);
 #endif
             }
         }

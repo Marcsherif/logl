@@ -73,19 +73,26 @@ UseShader(u32 Id)
 }
 
 internal void
-SetBool(u32 Id, const char *name, b32 value)
+SetUniformb(u32 Id, const char *name, b32 value)
 {
     glUniform1i(glGetUniformLocation(Id, name), (int)value);
 }
 
 internal void
-SetInt(u32 Id, const char *name, i32 value)
+SetUniform(u32 Id, const char *name, i32 value)
 {
     glUniform1i(glGetUniformLocation(Id, name), value);
 }
 
 internal void
-SetFloat(u32 Id, const char *name, f32 value)
+SetUniform(u32 Id, const char *name, f32 value)
 {
     glUniform1f(glGetUniformLocation(Id, name), value);
+}
+
+internal void
+SetUniform(u32 Id, const char *name, glm::mat4 value)
+{
+    glUniformMatrix4fv(glGetUniformLocation(Id, name), 1, GL_FALSE,
+                       glm::value_ptr(value));
 }
