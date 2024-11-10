@@ -21,16 +21,22 @@ void Quit(SDL_Window *window, SDL_GLContext context);
 
 #include "logl_shader.cpp"
 
+global_variable b32 firstMouse = true;
+global_variable f32 alpha = 0;
+global_variable f32 fov = 90;
+global_variable f32 FOV_MAX = 180;
+global_variable f64 FPS = 0;
 
 struct myWindow
 {
+    SDL_Window *window;
     b32 updateCaption = false;
-    i32 Width;
-    i32 Height;
-    b32 FullScreen = false;
-    b32 Minimized = false;
-    b32 MouseFocus;
-    b32 KeyboardFocus;
+    i32 width;
+    i32 height;
+    b32 fullScreen = false;
+    b32 minimized = false;
+    b32 mouseFocus;
+    b32 keyboardFocus;
 };
 
 struct VABO
@@ -63,8 +69,8 @@ void Quit(SDL_Window *window, SDL_GLContext context)
     SDL_Quit();
 }
 
-b32 ProcessInput(SDL_Window* window, SDL_GLContext context, SDL_Event e,
-                 myWindow *myWindow, f32 *moveX, f32 *moveY, f32 *alpha)
+b32 ProcessInput(myWindow *myWindow, SDL_GLContext context, SDL_Event e,
+                 glm::vec3 *camPos, f32 *camSpeed, glm::vec3 *camFront, glm::vec3 *camUp)
 {
     b32 quit = false;
     if(e.type == SDL_EVENT_KEY_DOWN)
@@ -73,16 +79,16 @@ b32 ProcessInput(SDL_Window* window, SDL_GLContext context, SDL_Event e,
         {
             case SDLK_RETURN:
             {
-                if(myWindow->FullScreen)
+                if(myWindow->fullScreen)
                 {
-                    SDL_SetWindowFullscreen(window, 0);
-                    myWindow->FullScreen = false;
+                    SDL_SetWindowFullscreen(myWindow->window, 0);
+                    myWindow->fullScreen = false;
                 }
                 else
                 {
-                    SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
-                    myWindow->FullScreen = true;
-                    myWindow->Minimized = false;
+                    SDL_SetWindowFullscreen(myWindow->window, SDL_WINDOW_FULLSCREEN);
+                    myWindow->fullScreen = true;
+                    myWindow->minimized = false;
                 }
             } break;
 
@@ -90,41 +96,51 @@ b32 ProcessInput(SDL_Window* window, SDL_GLContext context, SDL_Event e,
             {
                 log("ESCAPE PRESSED");
                 quit = true;
-                Quit(window, context);
-            } break;
-
-            case SDLK_D:
-            {
-                *moveX += 0.2;
-                log("D KEY PRESSED");
-            } break;
-
-            case SDLK_A:
-            {
-                *moveX -= 0.2;
-                log("A KEY PRESSED");
+                Quit(myWindow->window, context);
             } break;
 
             case SDLK_W:
             {
-                *moveY += 0.2;
-                log("D KEY PRESSED");
+                *camPos += *camSpeed * (*camFront);
             } break;
 
             case SDLK_S:
             {
-                *moveY -= 0.2;
-                log("A KEY PRESSED");
+                *camPos -= *camSpeed * *camFront;
+            } break;
+
+            case SDLK_A:
+            {
+                *camPos -= glm::normalize(glm::cross(*camFront, *camUp)) * *camSpeed;
+            } break;
+
+            case SDLK_D:
+            {
+                *camPos += glm::normalize(glm::cross(*camFront, *camUp)) * *camSpeed;
             } break;
 
             case SDLK_DOWN:
             {
-                *alpha -= 0.1;
+                alpha -= 0.1;
             } break;
 
             case SDLK_UP:
             {
-                *alpha += 0.1;
+                alpha += 0.1;
+            } break;
+
+            case SDLK_Z:
+            {
+                fov -= 30;
+                if(fov < 1.0f)
+                    fov = 1.0f;
+            } break;
+
+            case SDLK_X:
+            {
+                fov += 30;
+                if(fov > FOV_MAX)
+                    fov = FOV_MAX;
             } break;
         }
     }
@@ -132,14 +148,14 @@ b32 ProcessInput(SDL_Window* window, SDL_GLContext context, SDL_Event e,
     return quit;
 }
 
-void HandleEvent(SDL_Window* window, SDL_Event e, myWindow *myWindow)
+void HandleEvent(myWindow *myWindow, SDL_Event e)
 {
     switch(e.type)
     {
         case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
-            myWindow->Width = e.window.data1;
-            myWindow->Height = e.window.data2;
-            FramebufferSizeCallback(myWindow->Width, myWindow->Height);
+            myWindow->width = e.window.data1;
+            myWindow->height = e.window.data2;
+            FramebufferSizeCallback(myWindow->width, myWindow->height);
             PaintMyWindow();
             break;
 
@@ -148,45 +164,54 @@ void HandleEvent(SDL_Window* window, SDL_Event e, myWindow *myWindow)
             break;
 
         case SDL_EVENT_WINDOW_MOUSE_ENTER:
-            myWindow->MouseFocus = true;
+            myWindow->mouseFocus = true;
             myWindow->updateCaption = true;
             log("mouse focused!");
             break;
 
         case SDL_EVENT_WINDOW_MOUSE_LEAVE:
-            myWindow->MouseFocus = false;
+            myWindow->mouseFocus = false;
             myWindow->updateCaption = true;
             break;
 
         case SDL_EVENT_WINDOW_FOCUS_GAINED:
-            myWindow->KeyboardFocus = true;
+            myWindow->keyboardFocus = true;
             myWindow->updateCaption = true;
             break;
 
         case SDL_EVENT_WINDOW_FOCUS_LOST:
-            myWindow->KeyboardFocus = false;
+            myWindow->keyboardFocus = false;
             myWindow->updateCaption = true;
             break;
 
         case SDL_EVENT_WINDOW_MINIMIZED:
-            myWindow->Minimized = true;
+            myWindow->minimized = true;
             break;
 
         case SDL_EVENT_WINDOW_MAXIMIZED:
-            myWindow->Minimized = false;
+            myWindow->minimized = false;
             break;
 
         case SDL_EVENT_WINDOW_RESTORED:
-            myWindow->Minimized = false;
+            myWindow->minimized = false;
             break;
     }
     if(myWindow->updateCaption)
     {
-        const u32 bufSize = 120;
+        const u32 bufSize = 320;
         char caption[bufSize] = {};
-        if(myWindow->MouseFocus) SDL_strlcat(caption, "SDL Tutorial - MouseFocus: On", bufSize); else SDL_strlcat(caption, "SDL Tutorial - MouseFocus: Off", bufSize);
-        if(myWindow->KeyboardFocus) SDL_strlcat(caption,"  KeyboardFocus: On", bufSize); else SDL_strlcat(caption,"  KeyboardFocus: Off", bufSize);
-        SDL_SetWindowTitle(window, caption);
+        if(myWindow->mouseFocus)
+            SDL_strlcat(caption, "SDL Tutorial - MouseFocus: On", bufSize);
+        else
+            SDL_strlcat(caption, "SDL Tutorial - MouseFocus: Off", bufSize);
+        if(myWindow->keyboardFocus)
+            SDL_strlcat(caption,"  KeyboardFocus: On", bufSize);
+        else
+            SDL_strlcat(caption,"  KeyboardFocus: Off", bufSize);
+        char fovText[30] = {};
+        SDL_snprintf(fovText, 30, "  Fov: %.02f  FPS: %.02ff/s", fov, FPS);
+        SDL_strlcat(caption, fovText, bufSize);
+        SDL_SetWindowTitle(myWindow->window, caption);
     }
 }
 
@@ -417,6 +442,75 @@ void DrawPythagoreanTree(SDL_Window *window, glm::mat4 initialTransform, VABO va
     }
 }
 
+glm::vec3
+GetCameraDirection(myWindow *myWindow, f32 *lastMouseX, f32 *lastMouseY, f32 *yaw, f32 *pitch)
+{
+    f32 mousePosX = 0;
+    f32 mousePosY = 0;
+    SDL_GetMouseState(&mousePosX, &mousePosY);
+
+    f32 width = (f32)myWindow->width;
+    f32 height = (f32)myWindow->height;
+    const f32 edgeThreshold = 10.0f;
+
+    if(mousePosX <= edgeThreshold)
+    {
+        firstMouse = true;
+        mousePosX = width-edgeThreshold-1;
+        SDL_WarpMouseInWindow(myWindow->window, mousePosX, mousePosY);
+    }
+    if(mousePosX >= width - edgeThreshold)
+    {
+        firstMouse = true;
+        mousePosX = edgeThreshold;
+        SDL_WarpMouseInWindow(myWindow->window, mousePosX, mousePosY);
+    }
+
+    if(mousePosY <= edgeThreshold)
+    {
+        firstMouse = true;
+        mousePosY = height-edgeThreshold-1;
+        SDL_WarpMouseInWindow(myWindow->window, mousePosX, mousePosY);
+    }
+    if(mousePosY >= height-edgeThreshold)
+    {
+        firstMouse = true;
+        mousePosY = edgeThreshold;
+        SDL_WarpMouseInWindow(myWindow->window, mousePosX, mousePosY);
+    }
+
+    if (firstMouse)
+    {
+        *lastMouseX = mousePosX;
+        *lastMouseY = mousePosY;
+        firstMouse = false;
+    }
+
+    f32 mouseOffsetX = mousePosX - *lastMouseX;
+    f32 mouseOffsetY = *lastMouseY - mousePosY;
+    *lastMouseX = mousePosX;
+    *lastMouseY = mousePosY;
+    const f32 sensitivity = 0.1f;
+    mouseOffsetX *= sensitivity;
+    mouseOffsetY *= sensitivity;
+
+    *yaw   += mouseOffsetX;
+    *pitch += mouseOffsetY;
+
+    if(*pitch > 89.0f)
+        *pitch =  89.0f;
+    if(*pitch < -89.0f)
+        *pitch = -89.0f;
+
+    glm::vec3 direction;
+    direction.x = cos(glm::radians(*yaw)) * cos(glm::radians(*pitch));
+    direction.y = sin(glm::radians(*pitch));
+    direction.z = sin(glm::radians(*yaw)) * cos(glm::radians(*pitch));
+    glm::vec3 camFront = glm::normalize(direction);
+
+    return camFront;
+}
+
 int main()
 {
     if(!SDL_Init(SDL_INIT_VIDEO))
@@ -454,6 +548,8 @@ int main()
         {
             err("Failed to initialize Context");
         }
+        SDL_SetWindowRelativeMouseMode(window, 1);
+
         if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress))
         {
             err("Failed to initialize GLAD");
@@ -481,41 +577,70 @@ int main()
         SetUniform(shader, "texture1", 0);
         SetUniform(shader, "texture2", 1);
 
-        glm::mat4 view = glm::mat4(1.0f);
-        view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
-
         glm::mat4 projection;
-        projection = glm::perspective(glm::radians(45.0f), f32(3), 0.1f, 100.0f);
+        projection = glm::perspective(glm::radians(45.0f), f32(width / height), 0.1f, 100.0f);
+
+        glm::vec3 camPos   = glm::vec3(0.0f, 0.0f,  3.0f);
+        glm::vec3 camFront = glm::vec3(0.0f, 0.0f, -1.0f);
+        glm::vec3 camUp    = glm::vec3(0.0f, 1.0f,  0.0f);
+
+        f32 yaw = 0.0f;
+        f32 pitch = 0.0f;
 
         i32 nrAttributes;
         glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nrAttributes);
         log("Maximum nr of vertex attributes supported: %d\n", nrAttributes);
 
         myWindow myWindow;
+        myWindow.window = window;
         SDL_Event e;
         b32 quit = false;
-        u64 lastCycleCount = SDL_GetPerformanceCounter();
+        u64 upTime = SDL_GetPerformanceCounter();
+        u64 lastCycleCount = upTime;
+        u64 cyclesElapsed = lastCycleCount;
+        f64 MCPF = 0;
         u64 frequency = SDL_GetPerformanceFrequency();
-        f32 moveX = 0;
-        f32 moveY = 0;
-        f32 alpha = 0;
+        f32 camSpeed = 0.05f;
+        f32 lastMouseX = width/2;
+        f32 lastMouseY = height/2;
         while(!quit)
         {
             while(SDL_PollEvent(&e))
             {
                 if(e.type == SDL_EVENT_QUIT) quit = true;
 
-                HandleEvent(window, e, &myWindow);
-                quit = ProcessInput(window, context, e, &myWindow, &moveX, &moveY, &alpha);
+                HandleEvent(&myWindow, e);
+                quit = ProcessInput(&myWindow, context, e,
+                                    &camPos, &camSpeed, &camFront, &camUp);
             }
 
-            if(!myWindow.Minimized)
+            if(!myWindow.minimized)
             {
                 glClearColor(0x18 / 255.0f, 0x18 / 255.0f, 0x18 / 255.0f, 0xFF);
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-                f32 timeValue = GetSecondsElapsed(lastCycleCount, frequency);
+                f32 timeValue = GetSecondsElapsed(upTime, frequency);
+                camSpeed = 5.5f * (f32)MCPF;
                 f32 ab = GetAlphaBlend(1.0f);
+
+                projection = glm::perspective(glm::radians(fov), f32(width / height), 0.1f, 100.0f);
+                camFront = GetCameraDirection(&myWindow, &lastMouseX, &lastMouseY, &yaw, &pitch);
+
+                glm::mat4 view;
+                camPos.y = 0;
+                //view = glm::lookAt(camPos, camPos + camFront, camUp);
+                // POS  TARGET  UP
+                glm::vec3 camRight = glm::cross(camFront, camUp);
+                view[0] = glm::vec4(camRight, 0.0f);
+                view[1] = glm::vec4(camUp, 0.0f);
+                view[2] = glm::vec4(camFront+camPos, 0.0f);
+
+                glm::mat4 pos;
+                pos[0][3] = -camPos.x;
+                pos[1][3] = -camPos.y;
+                pos[1][3] = -camPos.z;
+
+                view = view * pos;
 
                 UseShader(shader);
                 SetUniform(shader, "alpha", 0.2f);
@@ -544,16 +669,17 @@ int main()
                 }
 
                 SDL_GL_SwapWindow(window);
-#if 0
+
                 // TODO: track fps
                 u64 endCycleCount = SDL_GetPerformanceCounter();
-                u64 cyclesElapsed = endCycleCount - lastCycleCount;
+                cyclesElapsed = endCycleCount - lastCycleCount;
                 lastCycleCount = endCycleCount;
 
-                f64 MCPF = (f64)cyclesElapsed / (f64)frequency;
-                f64 FPS = 1.0f/MCPF;
+                MCPF = (f64)cyclesElapsed / (f64)frequency;
+#if 1
+                FPS = 1.0f/MCPF;
 
-                log("%.02ff/s,  %.02fmc/f\n", FPS, MCPF);
+                //log("%.02ff/s,  %.02fmc/f\n", FPS, MCPF);
 #endif
             }
         }
