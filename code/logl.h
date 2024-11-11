@@ -1,7 +1,6 @@
 #if !defined(LOGL_H)
 
 #include "logl_platform.h"
-#include "logl_shader.h"
 
 #define Minimum(A, B) ((A < B) ? (A) : (B))
 #define Maximum(A, B) ((A > B) ? (A) : (B))
@@ -31,6 +30,10 @@ PushSize_(memory_arena *Arena, memory_index Size)
     Arena->Used += Size;
     return(Result);
 }
+
+#include "sdl_main.h"
+#include "logl_shader.h"
+#include "logl_camera.h"
 
 #define LOGL_H
 #endif

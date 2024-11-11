@@ -11,6 +11,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/string_cast.hpp>
+
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image/stb_image.h>
 
@@ -19,25 +22,13 @@
 void Quit(SDL_Window *window, SDL_GLContext context);
 #define err(msg) Quit(window, context); ThrowError(msg);
 
-#include "logl_shader.cpp"
-
+global_variable b32 globalQuit = false;
 global_variable b32 firstMouse = true;
 global_variable f32 alpha = 0;
-global_variable f32 fov = 90;
-global_variable f32 FOV_MAX = 180;
 global_variable f64 FPS = 0;
 
-struct myWindow
-{
-    SDL_Window *window;
-    b32 updateCaption = false;
-    i32 width;
-    i32 height;
-    b32 fullScreen = false;
-    b32 minimized = false;
-    b32 mouseFocus;
-    b32 keyboardFocus;
-};
+#include "logl_shader.cpp"
+#include "logl_camera.cpp"
 
 struct VABO
 {
@@ -57,98 +48,116 @@ void PaintMyWindow()
 {
 }
 
-void FramebufferSizeCallback(i32 width, i32 height)
+internal void
+FramebufferSizeCallback(i32 width, i32 height)
 {
     glViewport(0, 0, width, height);
 }
 
-void Quit(SDL_Window *window, SDL_GLContext context)
+void
+Quit(SDL_Window *window, SDL_GLContext context)
 {
     SDL_GL_DestroyContext(context);
     SDL_DestroyWindow(window);
     SDL_Quit();
 }
 
-b32 ProcessInput(myWindow *myWindow, SDL_GLContext context, SDL_Event e,
-                 glm::vec3 *camPos, f32 *camSpeed, glm::vec3 *camFront, glm::vec3 *camUp)
+internal void
+ProcessKeyboardMessage(game_button_state *newState, b32 isDown)
 {
-    b32 quit = false;
-    if(e.type == SDL_EVENT_KEY_DOWN)
+    if(newState->endedDown != isDown)
     {
-        switch(e.key.key)
-        {
-            case SDLK_RETURN:
-            {
-                if(myWindow->fullScreen)
-                {
-                    SDL_SetWindowFullscreen(myWindow->window, 0);
-                    myWindow->fullScreen = false;
-                }
-                else
-                {
-                    SDL_SetWindowFullscreen(myWindow->window, SDL_WINDOW_FULLSCREEN);
-                    myWindow->fullScreen = true;
-                    myWindow->minimized = false;
-                }
-            } break;
-
-            case SDLK_ESCAPE:
-            {
-                log("ESCAPE PRESSED");
-                quit = true;
-                Quit(myWindow->window, context);
-            } break;
-
-            case SDLK_W:
-            {
-                *camPos += *camSpeed * (*camFront);
-            } break;
-
-            case SDLK_S:
-            {
-                *camPos -= *camSpeed * *camFront;
-            } break;
-
-            case SDLK_A:
-            {
-                *camPos -= glm::normalize(glm::cross(*camFront, *camUp)) * *camSpeed;
-            } break;
-
-            case SDLK_D:
-            {
-                *camPos += glm::normalize(glm::cross(*camFront, *camUp)) * *camSpeed;
-            } break;
-
-            case SDLK_DOWN:
-            {
-                alpha -= 0.1;
-            } break;
-
-            case SDLK_UP:
-            {
-                alpha += 0.1;
-            } break;
-
-            case SDLK_Z:
-            {
-                fov -= 30;
-                if(fov < 1.0f)
-                    fov = 1.0f;
-            } break;
-
-            case SDLK_X:
-            {
-                fov += 30;
-                if(fov > FOV_MAX)
-                    fov = FOV_MAX;
-            } break;
-        }
+        newState->endedDown = isDown;
+        ++newState->halfTransitionCount;
     }
-
-    return quit;
 }
 
-void HandleEvent(myWindow *myWindow, SDL_Event e)
+internal void
+ProcessInput(my_window *myWindow, game_controller_input *keyboard, SDL_GLContext context, SDL_Event e)
+{
+    if(e.type == SDL_EVENT_QUIT) globalQuit = true;
+    if(e.type == SDL_EVENT_KEY_UP || e.type == SDL_EVENT_KEY_DOWN)
+    {
+        //SDL_Keycode key = e.key.key;
+        const bool *key = SDL_GetKeyboardState(NULL);
+        b32 isDown = 0;
+        switch(e.key.type)
+        {
+            case SDL_EVENT_KEY_DOWN:
+            {
+                isDown = 1;
+            } break;
+            case SDL_EVENT_KEY_UP:
+            {
+                isDown = 0;
+            } break;
+        }
+
+        if(key[SDL_SCANCODE_RETURN])
+        {
+            if(myWindow->fullScreen)
+            {
+                SDL_SetWindowFullscreen(myWindow->window, 0);
+                myWindow->fullScreen = false;
+            }
+            else
+            {
+                SDL_SetWindowFullscreen(myWindow->window, SDL_WINDOW_FULLSCREEN);
+                myWindow->fullScreen = true;
+                myWindow->minimized = false;
+            }
+        }
+
+        if(key[SDL_SCANCODE_ESCAPE])
+        {
+            log("ESCAPE PRESSED");
+            globalQuit = true;
+            Quit(myWindow->window, context);
+        }
+
+        if(key[SDL_SCANCODE_W])
+        {
+            ProcessKeyboardMessage(&keyboard->moveForward, isDown);
+        }
+
+        if(key[SDL_SCANCODE_S])
+        {
+            ProcessKeyboardMessage(&keyboard->moveBackward, isDown);
+        }
+
+        if(key[SDL_SCANCODE_A])
+        {
+            ProcessKeyboardMessage(&keyboard->moveLeft, isDown);
+        }
+
+        if(key[SDL_SCANCODE_D])
+        {
+            ProcessKeyboardMessage(&keyboard->moveRight, isDown);
+        }
+
+        if(key[SDL_SCANCODE_DOWN])
+        {
+            alpha -= 0.1;
+        }
+
+        if(key[SDL_SCANCODE_UP])
+        {
+            alpha += 0.1;
+        }
+
+        if(key[SDL_SCANCODE_Z])
+        {
+            ProcessKeyboardMessage(&keyboard->zoomin, isDown);
+        }
+
+        if(key[SDL_SCANCODE_X])
+        {
+            ProcessKeyboardMessage(&keyboard->zoomout, isDown);
+        }
+    }
+}
+
+void HandleEvent(my_window *myWindow, SDL_Event e, my_camera camera)
 {
     switch(e.type)
     {
@@ -209,7 +218,7 @@ void HandleEvent(myWindow *myWindow, SDL_Event e)
         else
             SDL_strlcat(caption,"  KeyboardFocus: Off", bufSize);
         char fovText[30] = {};
-        SDL_snprintf(fovText, 30, "  Fov: %.02f  FPS: %.02ff/s", fov, FPS);
+        SDL_snprintf(fovText, 30, "  Fov: %.02f  FPS: %.02ff/s", camera.fov, FPS);
         SDL_strlcat(caption, fovText, bufSize);
         SDL_SetWindowTitle(myWindow->window, caption);
     }
@@ -442,75 +451,6 @@ void DrawPythagoreanTree(SDL_Window *window, glm::mat4 initialTransform, VABO va
     }
 }
 
-glm::vec3
-GetCameraDirection(myWindow *myWindow, f32 *lastMouseX, f32 *lastMouseY, f32 *yaw, f32 *pitch)
-{
-    f32 mousePosX = 0;
-    f32 mousePosY = 0;
-    SDL_GetMouseState(&mousePosX, &mousePosY);
-
-    f32 width = (f32)myWindow->width;
-    f32 height = (f32)myWindow->height;
-    const f32 edgeThreshold = 10.0f;
-
-    if(mousePosX <= edgeThreshold)
-    {
-        firstMouse = true;
-        mousePosX = width-edgeThreshold-1;
-        SDL_WarpMouseInWindow(myWindow->window, mousePosX, mousePosY);
-    }
-    if(mousePosX >= width - edgeThreshold)
-    {
-        firstMouse = true;
-        mousePosX = edgeThreshold;
-        SDL_WarpMouseInWindow(myWindow->window, mousePosX, mousePosY);
-    }
-
-    if(mousePosY <= edgeThreshold)
-    {
-        firstMouse = true;
-        mousePosY = height-edgeThreshold-1;
-        SDL_WarpMouseInWindow(myWindow->window, mousePosX, mousePosY);
-    }
-    if(mousePosY >= height-edgeThreshold)
-    {
-        firstMouse = true;
-        mousePosY = edgeThreshold;
-        SDL_WarpMouseInWindow(myWindow->window, mousePosX, mousePosY);
-    }
-
-    if (firstMouse)
-    {
-        *lastMouseX = mousePosX;
-        *lastMouseY = mousePosY;
-        firstMouse = false;
-    }
-
-    f32 mouseOffsetX = mousePosX - *lastMouseX;
-    f32 mouseOffsetY = *lastMouseY - mousePosY;
-    *lastMouseX = mousePosX;
-    *lastMouseY = mousePosY;
-    const f32 sensitivity = 0.1f;
-    mouseOffsetX *= sensitivity;
-    mouseOffsetY *= sensitivity;
-
-    *yaw   += mouseOffsetX;
-    *pitch += mouseOffsetY;
-
-    if(*pitch > 89.0f)
-        *pitch =  89.0f;
-    if(*pitch < -89.0f)
-        *pitch = -89.0f;
-
-    glm::vec3 direction;
-    direction.x = cos(glm::radians(*yaw)) * cos(glm::radians(*pitch));
-    direction.y = sin(glm::radians(*pitch));
-    direction.z = sin(glm::radians(*yaw)) * cos(glm::radians(*pitch));
-    glm::vec3 camFront = glm::normalize(direction);
-
-    return camFront;
-}
-
 int main()
 {
     if(!SDL_Init(SDL_INIT_VIDEO))
@@ -555,6 +495,10 @@ int main()
             err("Failed to initialize GLAD");
         }
 
+        game_input input[2] {};
+        game_input *newInput = &input[0];
+        game_input *oldInput = &input[1];
+
         glViewport(0, 0, width, height);
 
         char *vertShaderPath = "../shaders/vert.glsl";
@@ -581,66 +525,80 @@ int main()
         projection = glm::perspective(glm::radians(45.0f), f32(width / height), 0.1f, 100.0f);
 
         glm::vec3 camPos   = glm::vec3(0.0f, 0.0f,  3.0f);
-        glm::vec3 camFront = glm::vec3(0.0f, 0.0f, -1.0f);
         glm::vec3 camUp    = glm::vec3(0.0f, 1.0f,  0.0f);
-
-        f32 yaw = 0.0f;
-        f32 pitch = 0.0f;
+        my_camera debugCamera = InitCamera(camPos, camUp);
 
         i32 nrAttributes;
         glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nrAttributes);
         log("Maximum nr of vertex attributes supported: %d\n", nrAttributes);
 
-        myWindow myWindow;
+        my_window myWindow;
         myWindow.window = window;
         SDL_Event e;
-        b32 quit = false;
         u64 upTime = SDL_GetPerformanceCounter();
+        u64 frequency = SDL_GetPerformanceFrequency();
         u64 lastCycleCount = upTime;
         u64 cyclesElapsed = lastCycleCount;
         f64 MCPF = 0;
-        u64 frequency = SDL_GetPerformanceFrequency();
-        f32 camSpeed = 0.05f;
         f32 lastMouseX = width/2;
         f32 lastMouseY = height/2;
-        while(!quit)
+        i32 movement = 0;
+        while(!globalQuit)
         {
+            newInput->dtForFrame = (f32)MCPF;
+
+            game_controller_input *oldKeyboard = GetController(oldInput, 0);
+            game_controller_input *newKeyboard = GetController(newInput, 0);
+            *newKeyboard = {};
+            newKeyboard->isConnected = true;
+            for(i32 buttonIndex = 0;
+                buttonIndex < ArrayCount(newKeyboard->buttons);
+                ++buttonIndex)
+            {
+                newKeyboard->buttons[buttonIndex].endedDown =
+                    oldKeyboard->buttons[buttonIndex].endedDown;
+            }
+
             while(SDL_PollEvent(&e))
             {
-                if(e.type == SDL_EVENT_QUIT) quit = true;
-
-                HandleEvent(&myWindow, e);
-                quit = ProcessInput(&myWindow, context, e,
-                                    &camPos, &camSpeed, &camFront, &camUp);
+                ProcessInput(&myWindow, newKeyboard, context, e);
+                HandleEvent(&myWindow, e, debugCamera);
             }
+
+            //log("A BUTTON : %d", newKeyboard->moveLeft.endedDown);
+            ProcessCameraInputs(&debugCamera, newKeyboard, newInput->dtForFrame);
+
+            f32 mousePosX, mousePosY;
+            SDL_GetMouseState(&mousePosX, &mousePosY);
+            newInput->mouseX = mousePosX;
+            newInput->mouseY = mousePosY;
+            newInput->mouseZ = 0; // TODO(marc): Support mousewheel?
+#if 0
+            Win32ProcessKeyboardMessage(&newInput->mouseButtons[0],
+                                        GetKeyState(VK_LBUTTON) & (1 << 15));
+            Win32ProcessKeyboardMessage(&newInput->mouseButtons[1],
+                                        GetKeyState(VK_MBUTTON) & (1 << 15));
+            Win32ProcessKeyboardMessage(&newInput->mouseButtons[2],
+                                        GetKeyState(VK_RBUTTON) & (1 << 15));
+            Win32ProcessKeyboardMessage(&newInput->mouseButtons[3],
+                                        GetKeyState(VK_XBUTTON1) & (1 << 15));
+            Win32ProcessKeyboardMessage(&newInput->mouseButtons[4],
+                                        GetKeyState(VK_XBUTTON2) & (1 << 15));
+#endif
 
             if(!myWindow.minimized)
             {
+
                 glClearColor(0x18 / 255.0f, 0x18 / 255.0f, 0x18 / 255.0f, 0xFF);
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
                 f32 timeValue = GetSecondsElapsed(upTime, frequency);
-                camSpeed = 5.5f * (f32)MCPF;
                 f32 ab = GetAlphaBlend(1.0f);
 
-                projection = glm::perspective(glm::radians(fov), f32(width / height), 0.1f, 100.0f);
-                camFront = GetCameraDirection(&myWindow, &lastMouseX, &lastMouseY, &yaw, &pitch);
+                projection = glm::perspective(glm::radians(debugCamera.fov), f32(width / height), 0.1f, 100.0f);
 
-                glm::mat4 view;
-                camPos.y = 0;
-                //view = glm::lookAt(camPos, camPos + camFront, camUp);
-                // POS  TARGET  UP
-                glm::vec3 camRight = glm::cross(camFront, camUp);
-                view[0] = glm::vec4(camRight, 0.0f);
-                view[1] = glm::vec4(camUp, 0.0f);
-                view[2] = glm::vec4(camFront+camPos, 0.0f);
-
-                glm::mat4 pos;
-                pos[0][3] = -camPos.x;
-                pos[1][3] = -camPos.y;
-                pos[1][3] = -camPos.z;
-
-                view = view * pos;
+                GetCameraDirection(&myWindow, newInput, &debugCamera, &lastMouseX, &lastMouseY);
+                glm::mat4 view = GetViewMatrix(&debugCamera);
 
                 UseShader(shader);
                 SetUniform(shader, "alpha", 0.2f);

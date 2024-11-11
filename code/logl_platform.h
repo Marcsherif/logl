@@ -65,5 +65,61 @@ void log(const char* msg, ...)
     printf("%s\n", buf);
 }
 
+/*
+ NOTE(marc): Services that the game provides to the platform layer.
+ (this may expand in the future - sound on seperate thread, etc.)
+*/
+
+struct game_button_state
+{
+    int halfTransitionCount;
+    b32 endedDown;
+};
+
+struct game_controller_input
+{
+    b32 isConnected;
+    b32 isAnalog;
+    f32 stickAverageX;
+    f32 stickAverageY;
+
+    union
+    {
+        game_button_state buttons[6];
+        struct
+        {
+            game_button_state moveLeft;
+            game_button_state moveRight;
+            game_button_state moveForward;
+            game_button_state moveBackward;
+
+            game_button_state zoomin;
+            game_button_state zoomout;
+
+            //
+
+            game_button_state Terminator;
+        };
+    };
+};
+
+struct game_input
+{
+    // Mouse for debugging
+    game_button_state mouseButtons[5];
+    f32 mouseX, mouseY, mouseZ;
+
+    f32 dtForFrame;
+
+    game_controller_input controllers[5];
+};
+
+inline game_controller_input *GetController(game_input *input, int unsigned controllerIndex)
+{
+    Assert(controllerIndex < ArrayCount(input->controllers));
+    game_controller_input *result = &input->controllers[controllerIndex];
+    return(result);
+}
+
 #define LOGL_PLATFORM_H
 #endif

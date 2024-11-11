@@ -1,0 +1,27 @@
+#if !defined(SDL_CAMERA_H)
+
+enum camOptions
+{
+    camDEBUG = 0,
+    camFPS = 1,
+};
+
+struct my_camera
+{
+    glm::vec3 position;
+    glm::vec3 front;
+    glm::vec3 up;
+    glm::vec3 right;
+
+    f32 yaw;
+    f32 pitch;
+
+    f32 speed;
+    f32 sensitivity;
+    f32 fov;
+
+    camOptions options;
+};
+
+#define SDL_CAMERA_H
+#endif
