@@ -267,16 +267,60 @@ u32 GetVAOwithoutEBO(VABO *vabo, f32 *vertices, u32 nVerts)
     glBindBuffer(GL_ARRAY_BUFFER, vabo->VBO[vabo->nVBO++]);
     glBufferData(GL_ARRAY_BUFFER, nVerts*sizeof(*vertices + 0), vertices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3*sizeof(float)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3*sizeof(float)));
     glEnableVertexAttribArray(1);
 
     return vaoIndex;
 }
 
-f32 squareVertices[] = {
+f32 verticesWNormals[] = {
+    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+     0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+
+    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+
+    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+
+     0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+
+    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+     0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+     0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+     0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+
+    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+     0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
+};
+
+f32 textureVertices[] = {
     -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
      0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
      0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
@@ -476,7 +520,8 @@ int main()
     vabo.VBO = PushArray(&arena, 4, u32);
     vabo.EBO = PushArray(&arena, 4, u32);
 
-    u32 shader = 0;
+    u32 lightShader = 0;
+    u32 sourceLightShader = 0;
     if(!window)
     {
         ThrowError("Failed to initialized Window!");
@@ -501,9 +546,13 @@ int main()
 
         glViewport(0, 0, width, height);
 
-        char *vertShaderPath = "../shaders/vert.glsl";
-        char *fragShaderPath = "../shaders/frag.glsl";
-        shader = Shader(window, context, vertShaderPath, fragShaderPath);
+        char *vertShaderPath = "../shaders/light.vs";
+        char *fragShaderPath = "../shaders/light.fs";
+        lightShader = Shader(window, context, vertShaderPath, fragShaderPath);
+
+        fragShaderPath = "../shaders/lightSource.fs";
+        sourceLightShader = Shader(window, context, vertShaderPath, fragShaderPath);
+        glm::vec3 lightPos(1.2f, 0.0f, 2.0f);
 
         u32 nVerts1 = ArrayCount(middleTriangleVertices);
         u32 triangle1Verts = GetVAOwithoutEBO(&vabo, middleTriangleVertices, nVerts1);
@@ -511,15 +560,14 @@ int main()
         u32 nVerts2 = ArrayCount(triangleVertices1);
         u32 triangle2 = GetVAOwithoutEBO(&vabo, triangleVertices1, nVerts2);
 
-        u32 nSquareVerts = ArrayCount(squareVertices);
-        u32 rectangle = GetVAOwithoutEBO(&vabo, squareVertices, nSquareVerts);
+        u32 nSquareVerts = ArrayCount(verticesWNormals);
+        u32 rectangle = GetVAOwithoutEBO(&vabo, verticesWNormals, nSquareVerts);
+        u32 lightSourceCube = GetVAOwithoutEBO(&vabo, verticesWNormals, nSquareVerts);
         glEnable(GL_DEPTH_TEST);
 
         u32 container = GetTexture("../data/container.jpg", GL_RGB, GL_MIRRORED_REPEAT);
         u32 awesomeFace = GetTexture("../data/awesomeface.png", GL_RGBA, GL_MIRRORED_REPEAT);
-        UseShader(shader);
-        SetUniform(shader, "texture1", 0);
-        SetUniform(shader, "texture2", 1);
+        UseShader(lightShader);
 
         glm::mat4 projection;
         projection = glm::perspective(glm::radians(45.0f), f32(width / height), 0.1f, 100.0f);
@@ -595,15 +643,18 @@ int main()
                 f32 timeValue = GetSecondsElapsed(upTime, frequency);
                 f32 ab = GetAlphaBlend(1.0f);
 
-                projection = glm::perspective(glm::radians(debugCamera.fov), f32(width / height), 0.1f, 100.0f);
+                UseShader(lightShader);
+                SetUniform(lightShader, "objectColor", 1.0f, 0.5f, 0.31f);
+                SetUniform(lightShader, "lightColor", 1.0f, 1.0f, 1.0f);
+                SetUniform(lightShader, "lightPos", lightPos);
+                SetUniform(lightShader, "lookDir", debugCamera.position);
 
+                projection = glm::perspective(glm::radians(debugCamera.fov), f32(width / height), 0.1f, 100.0f);
                 GetCameraDirection(&myWindow, newInput, &debugCamera, &lastMouseX, &lastMouseY);
                 glm::mat4 view = GetViewMatrix(&debugCamera);
 
-                UseShader(shader);
-                SetUniform(shader, "alpha", 0.2f);
-                SetUniform(shader, "view", view);
-                SetUniform(shader, "projection", projection);
+                SetUniform(lightShader, "view", view);
+                SetUniform(lightShader, "projection", projection);
 
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, container);
@@ -611,20 +662,35 @@ int main()
                 glBindTexture(GL_TEXTURE_2D, awesomeFace);
 
                 glBindVertexArray(vabo.VAO[rectangle]);
-                for(u32 i = 0; i < 10; ++i)
+                for(u32 i = 0; i < 1; ++i)
                 {
                     glm::mat4 model = glm::mat4(1.0f);
                     model = glm::translate(model, cubePositions[i]);
-                    f32 angle = 20.0f * i;
-                    model = glm::rotate(model, angle, glm::vec3(1.0f, 0.0f, 0.0f));
-                    if(i % 3 == 0 || i == 0)
-                    {
-                        model = glm::rotate(model, tan(timeValue), glm::vec3(1.0f, 1.0f, 0.0f));
-                    }
-                    SetUniform(shader, "model", model);
+                    //f32 angle = 20.0f * i;
+                    //model = glm::rotate(model, angle, glm::vec3(1.0f, 0.0f, 0.0f));
+                    //if(i % 3 == 0 || i == 0)
+                    //{
+                    //    model = glm::rotate(model, sin(timeValue), glm::vec3(1.0f, 1.0f, 0.0f));
+                    //}
+                    SetUniform(lightShader, "model", model);
 
                     glDrawArrays(GL_TRIANGLES, 0, vabo.count[rectangle]);
                 }
+
+                UseShader(sourceLightShader);
+                SetUniform(sourceLightShader, "view", view);
+                SetUniform(sourceLightShader, "projection", projection);
+
+                glm::mat4 model = glm::mat4(1.0f);
+                lightPos.x = sin(timeValue)*2;
+                lightPos.y = 0;//sin(timeValue)*2;
+                lightPos.z = cos(timeValue)*2;
+                model = glm::translate(model, lightPos);
+                model = glm::scale(model, glm::vec3(0.2f));
+                SetUniform(sourceLightShader, "model", model);
+
+                glBindVertexArray(vabo.VAO[lightSourceCube]);
+                glDrawArrays(GL_TRIANGLES, 0, vabo.count[lightSourceCube]);
 
                 SDL_GL_SwapWindow(window);
 
@@ -647,7 +713,8 @@ int main()
     // TODO: de-allocate resources
     glDeleteVertexArrays(vabo.nVAO, vabo.VAO);
     glDeleteBuffers(vabo.nVBO, vabo.VBO);
-    glDeleteProgram(shader);
+    glDeleteProgram(lightShader);
+    glDeleteProgram(sourceLightShader);
 
     Quit(window, context);
     return 0;

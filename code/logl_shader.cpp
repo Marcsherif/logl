@@ -22,7 +22,7 @@ Shader(SDL_Window *window, SDL_GLContext context, const char *vertexPath, const 
     glCompileShader(vertexShader);
 
     i32  success;
-    char infoLog[512];
+    char infoLog[1024];
     glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
     if(!success)
     {
@@ -38,7 +38,8 @@ Shader(SDL_Window *window, SDL_GLContext context, const char *vertexPath, const 
     success = 0;
     glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
     if(!success)
-    { glGetShaderInfoLog(fragmentShader, sizeof(infoLog), NULL, infoLog);
+    {
+        glGetShaderInfoLog(fragmentShader, sizeof(infoLog), NULL, infoLog);
         log(infoLog);
         err(infoLog);
     }
@@ -88,6 +89,18 @@ internal void
 SetUniform(u32 Id, const char *name, f32 value)
 {
     glUniform1f(glGetUniformLocation(Id, name), value);
+}
+
+internal void
+SetUniform(u32 Id, const char *name, glm::vec3 value)
+{
+    glUniform3f(glGetUniformLocation(Id, name), value.x, value.y, value.z);
+}
+
+internal void
+SetUniform(u32 Id, const char *name, f32 x, f32 y, f32 z)
+{
+    glUniform3f(glGetUniformLocation(Id, name), x, y, z);
 }
 
 internal void
