@@ -1,5 +1,5 @@
 # LOGL
-learning openGL
+Learning openGL
 
 day 1-4 learning and setting up
 
@@ -8,6 +8,7 @@ day 5 input and camera
 day 6 basic lighting
 
 day 7 lighting materials and flashlight:
-https://github.com/user-attachments/assets/21d35ed2-f758-431c-b07f-79786146c5e5
 
+
+https://github.com/user-attachments/assets/21d35ed2-f758-431c-b07f-79786146c5e5
 
