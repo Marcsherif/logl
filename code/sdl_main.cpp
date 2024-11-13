@@ -223,36 +223,6 @@ void HandleEvent(my_window *myWindow, SDL_Event e, my_camera camera)
     }
 }
 
-f32 triangleVertices[] = {
-    -0.8f, -0.8f, 0.0f,  8.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f,    0.0f, 2.0f, 0.0f,
-    -0.4f,  0.2f, 0.0f,  0.0f, 0.0f, 0.0f,
-
-    0.8f, 0.8f, 0.0f,  8.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f,  0.0f, 2.0f, 0.0f,
-    0.4f,  -0.2f, 0.0,  0.0f, 0.0f, 0.0f
-};
-
-f32 triangleVertices1[] = {
-    -0.8f, -0.8f, 0.0f,    1.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f,      0.0f, 0.0f, 0.0f,
-    -0.4f,  0.2f, 0.0f,    0.0f, 0.0f, 0.0f
-};
-
-
-f32 middleTriangleVertices[] = {
-    // positions         // colors
-     0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,   // bottom right
-    -0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,   // bottom left
-     0.0f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f    // top
-};
-
-f32 texCoords[] = {
-    0.0f, 0.0f,  // lower-left corner
-    1.0f, 0.0f,  // lower-right corner
-    0.5f, 1.0f   // top-center corner
-};
-
 u32 GetVAOwithoutEBO(VABO *vabo, f32 *vertices, u32 nVerts)
 {
     u32 vaoIndex = vabo->nVAO;
@@ -266,136 +236,63 @@ u32 GetVAOwithoutEBO(VABO *vabo, f32 *vertices, u32 nVerts)
 
     glBindVertexArray(vabo->VAO[vabo->nVAO++]);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3*sizeof(float)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3*sizeof(float)));
     glEnableVertexAttribArray(1);
+
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6*sizeof(float)));
+    glEnableVertexAttribArray(2);
 
     return vaoIndex;
 }
 
-f32 verticesWNormals[] = {
-    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-     0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+f32 cubeVertices[] = {
+    // positions          // normals           // texture coords
+    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
+     0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 0.0f,
+     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
+     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
 
-    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-     0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-     0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-     0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   0.0f, 0.0f,
+     0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   1.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   1.0f, 1.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   0.0f, 0.0f,
 
-    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-    -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-    -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
+    -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
 
-     0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-     0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-     0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-     0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-     0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
+     0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
 
-    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-     0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-     0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-     0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
+     0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 0.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f,
 
-    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-     0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-     0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-     0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
+    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f,
+     0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 0.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f
 };
 
-struct material
-{
-    glm::vec3 ambient;
-    glm::vec3 diffuse;
-    glm::vec3 specular;
-    f32 shininess;
-};
-material materialValues[] = {
-{ glm::vec3(0.0215,0.1745,0.0215) ,glm::vec3(0.07568,0.61424,0.07568),glm::vec3(0.633,0.727811,0.633) ,0.6}, //emerald
-{ glm::vec3(0.135,0.2225,0.1575) ,glm::vec3(0.54,0.89,0.63) ,glm::vec3(0.316228,0.316228,0.316228),0.1}, //jade
-{ glm::vec3(0.05375,0.05,0.06625) ,glm::vec3(0.18275,0.17,0.22525) ,glm::vec3(0.332741,0.328634,0.346435),0.3}, //obsidian
-{ glm::vec3(0.25,0.20725,0.20725) ,glm::vec3(1,0.829,0.829) ,glm::vec3(0.296648,0.296648,0.296648),0.088}, //pearl
-{ glm::vec3(0.1745,0.01175,0.01175),glm::vec3(0.61424,0.04136,0.04136),glm::vec3(0.727811,0.626959,0.626959),0.6}, //ruby
-{ glm::vec3(0.1,0.18725,0.1745) ,glm::vec3(0.396,0.74151,0.69102) ,glm::vec3(0.297254,0.30829,0.306678) ,0.1}, //turquoise
-{ glm::vec3(0.329412,0.223529,0.027451),glm::vec3(0.780392,0.568627,0.113725), glm::vec3(0.992157,0.941176,0.807843),0.21794872}, //brass
-{ glm::vec3(0.2125,0.1275,0.054), glm::vec3(0.714,0.4284,0.18144) ,glm::vec3(0.393548,0.271906,0.166721), 0.2}, //bronze
-{ glm::vec3(0.25,0.25,0.25) ,glm::vec3(0.4,0.4,0.4) ,glm::vec3(0.774597,0.774597,0.774597), 0.6}, //chrome
-{ glm::vec3(0.19125,0.0735,0.0225) ,glm::vec3(0.7038,0.27048,0.0828) ,glm::vec3(0.256777,0.137622,0.086014),0.1}, //copper
-{ glm::vec3(0.24725,0.1995,0.0745) ,glm::vec3(0.75164,0.60648,0.22648) ,glm::vec3(0.628281,0.555802,0.366065),0.4}, //gold
-{ glm::vec3(0.19225,0.19225,0.19225),glm::vec3(0.50754,0.50754,0.50754) ,glm::vec3(0.508273,0.508273,0.508273),0.4}, //silver
-{ glm::vec3(0.0,0.0,0.0) ,glm::vec3(0.01,0.01,0.01) ,glm::vec3(0.50,0.50,0.50), .25 }, //black plastic
-{ glm::vec3(0.0,0.1,0.06) ,glm::vec3(0.0,0.50980392,0.50980392),glm::vec3(0.50196078,0.50196078,0.50196078), .25}, //cyan plastic
-{ glm::vec3(0.0,0.0,0.0) ,glm::vec3(0.1 ,0.35,0.1) ,glm::vec3(0.45,0.55,0.45),.25 }, //green plastic
-{ glm::vec3(0.0,0.0,0.0) ,glm::vec3(0.5 ,0.0,0.0) ,glm::vec3(0.7,0.6 ,0.6),.25 }, //red plastic
-{ glm::vec3(0.0,0.0,0.0) ,glm::vec3(0.55 ,0.55,0.55) ,glm::vec3(0.70,0.70,0.70),.25 }, //white plastic
-{ glm::vec3(0.0,0.0,0.0) ,glm::vec3(0.5 ,0.5,0.0) ,glm::vec3(0.60,0.60,0.50),.25 }, //yellow plastic
-{ glm::vec3(0.02,0.02,0.02) ,glm::vec3(0.01,0.01,0.01) ,glm::vec3(0.4,0.4 ,0.4),.078125}, //black rubber
-{ glm::vec3(0.0,0.05,0.05) ,glm::vec3(0.4 ,0.5,0.5) ,glm::vec3(0.04,0.7,0.7) ,.078125}, //cyan rubber
-{ glm::vec3(0.0,0.05,0.0) ,glm::vec3(0.4 ,0.5,0.4) ,glm::vec3(0.04,0.7,0.04) ,.078125}, //green rubber
-{ glm::vec3(0.05,0.0,0.0) ,glm::vec3(0.5 ,0.4,0.4) ,glm::vec3(0.7,0.04,0.04) ,.078125}, //red rubber
-{ glm::vec3(0.05,0.05,0.05) ,glm::vec3(0.5,0.5,0.5) ,glm::vec3(0.7,0.7,0.7) ,.078125}, //white rubber
-{ glm::vec3(0.05,0.05,0.0) ,glm::vec3(0.5,0.5,0.4) ,glm::vec3(0.7,0.7,0.04) ,.078125 } //yellow rubber
-};
-
-f32 textureVertices[] = {
-    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-     0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-
-    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-    -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
-};
 glm::vec3 cubePositions[] = {
     glm::vec3( 0.0f,  0.0f,  0.0f),
     glm::vec3( 2.0f,  5.0f, -15.0f),
@@ -438,33 +335,42 @@ u32 GetVAOwithEBO(VABO *vabo, f32 *vertices, u32 nVerts, u32 *indices, u32 nIndi
     return vaoIndex;
 }
 
-u32 GetTexture(char *texturePath, u32 format, u32 wrappingMethod)
+u32 GetTexture(char *texturePath, u32 wrappingMethod)
 {
     u32 texture;
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrappingMethod);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrappingMethod);
-
-    //f32 bColor[] = {1.0f, 0.0f, 0.0f, 1.0f};
-    //glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, bColor);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
     i32 imageWidth, imageHeight, nrChannels;
     u8 *data = stbi_load(texturePath, &imageWidth, &imageHeight, &nrChannels, 0);
     stbi_set_flip_vertically_on_load(true);
     if(data)
     {
+        GLenum format = 0;
+        if(nrChannels == 1)
+            format = GL_RED;
+        else if(nrChannels == 3)
+            format = GL_RGB;
+        else if(nrChannels == 4)
+            format = GL_RGBA;
+
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, imageWidth, imageHeight, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
         stbi_image_free(data);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrappingMethod);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrappingMethod);
+
+        //f32 bColor[] = {1.0f, 0.0f, 0.0f, 1.0f};
+        //glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, bColor);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     }
     else
     {
-        log("Failed to load texture");
+        log("[Texture] Failed to load texture %s", texturePath);
+        stbi_image_free(data);
     }
 
     return texture;
@@ -482,50 +388,6 @@ f32 GetSecondsElapsed(u64 upTime, u64 frequency)
     u64 currTime = SDL_GetPerformanceCounter();
     f32 timeValue = (f32)((currTime - upTime) / (f32)frequency);
     return timeValue;
-}
-
-void PythagoreanTree(SDL_Window *window, glm::mat4 transform, VABO vabo, u32 object, int depth, u32 shader)
-{
-    if (depth == 0) return;
-
-    float scaling = 0.70710678f;
-
-    SetUniform(shader, "transform", transform);
-    glDrawElements(GL_TRIANGLES, vabo.count[object], GL_UNSIGNED_INT, 0);
-
-    glm::mat4 leftTransform = transform;
-    leftTransform = glm::translate(leftTransform, glm::vec3(-0.5f, 1.0f, 0.0f));
-    leftTransform = glm::rotate(leftTransform, glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    leftTransform = glm::scale(leftTransform, glm::vec3(scaling, scaling, 1.0f));
-
-    SetUniform(shader, "transform", leftTransform);
-    glDrawElements(GL_TRIANGLES, vabo.count[object], GL_UNSIGNED_INT, 0);
-
-    glm::mat4 rightTransform = transform;
-    rightTransform = glm::translate(rightTransform, glm::vec3(0.5f, 1.0f, 0.0f));
-    rightTransform = glm::rotate(rightTransform, glm::radians(-45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    rightTransform = glm::scale(rightTransform, glm::vec3(scaling, scaling, 1.0f));
-
-    SetUniform(shader, "transform", rightTransform);
-    glDrawElements(GL_TRIANGLES, vabo.count[object], GL_UNSIGNED_INT, 0);
-
-    PythagoreanTree(window, leftTransform, vabo, object, depth - 1, shader);
-    PythagoreanTree(window, rightTransform, vabo, object, depth - 1, shader);
-}
-
-void DrawPythagoreanTree(SDL_Window *window, glm::mat4 initialTransform, VABO vabo, u32 object, int maxDepth, u32 shader)
-{
-    for (int depth = 0; depth < maxDepth; ++depth) {
-        glm::mat4 transform = initialTransform;
-        SetUniform(shader, "transform", transform);
-
-        // NOTE(marc): bad implementation, calculates the entire thing at every level
-        PythagoreanTree(window, transform, vabo, object, depth, shader);
-
-        SDL_Delay(10);
-
-        SDL_GL_SwapWindow(window);
-    }
 }
 
 int main()
@@ -588,20 +450,21 @@ int main()
         sourceLightShader = Shader(window, vertShaderPath, fragShaderPath);
         glm::vec3 lightPos(1.2f, 0.0f, 2.0f);
 
-        u32 nVerts1 = ArrayCount(middleTriangleVertices);
-        u32 triangle1Verts = GetVAOwithoutEBO(&vabo, middleTriangleVertices, nVerts1);
-
-        u32 nVerts2 = ArrayCount(triangleVertices1);
-        u32 triangle2 = GetVAOwithoutEBO(&vabo, triangleVertices1, nVerts2);
-
-        u32 nSquareVerts = ArrayCount(verticesWNormals);
-        u32 cube = GetVAOwithoutEBO(&vabo, verticesWNormals, nSquareVerts);
-        u32 lightSourceCube = GetVAOwithoutEBO(&vabo, verticesWNormals, nSquareVerts);
+        u32 nSquareVerts = ArrayCount(cubeVertices);
+        u32 cube = GetVAOwithoutEBO(&vabo, cubeVertices, nSquareVerts);
+        u32 lightSourceCube = GetVAOwithoutEBO(&vabo, cubeVertices, nSquareVerts);
         glEnable(GL_DEPTH_TEST);
 
-        u32 container = GetTexture("../data/container.jpg", GL_RGB, GL_MIRRORED_REPEAT);
-        u32 awesomeFace = GetTexture("../data/awesomeface.png", GL_RGBA, GL_MIRRORED_REPEAT);
+        u32 container = GetTexture("../data/container.jpg", GL_MIRRORED_REPEAT);
+        u32 container2 = GetTexture("../data/container2.png", GL_MIRRORED_REPEAT);
+        u32 container2Specular = GetTexture("../data/container2_specular.png", GL_MIRRORED_REPEAT);
+        u32 matrix = GetTexture("../data/matrix.jpg", GL_MIRRORED_REPEAT);
+        u32 awesomeFace = GetTexture("../data/awesomeface.png", GL_MIRRORED_REPEAT);
+
         UseShader(lightShader);
+        SetUniform(lightShader, "material.diffuse", 0);
+        SetUniform(lightShader, "material.specular", 1);
+        SetUniform(lightShader, "material.emission", 2);
 
         glm::mat4 projection;
         projection = glm::perspective(glm::radians(45.0f), f32(width / height), 0.1f, 100.0f);
@@ -678,19 +541,27 @@ int main()
                 f32 ab = GetAlphaBlend(1.0f);
 
                 glm::vec3 lightColor;
-                lightColor.x = 0.2;//sin(timeValue * 2.0f);
-                lightColor.y = 0.2;//sin(timeValue * 0.7f);
-                lightColor.z = 0.2;//sin(timeValue * 1.3f);
+                lightColor.x = 1.0;//sin(timeValue * 2.0f);
+                lightColor.y = 1.0;//sin(timeValue * 0.7f);
+                lightColor.z = 1.0;//sin(timeValue * 1.3f);
 
-                glm::vec3 diffuseColor = lightColor   * glm::vec3(1.0f);
-                glm::vec3 ambientColor = diffuseColor * glm::vec3(1.0f);
+                glm::vec3 diffuseColor = lightColor   * glm::vec3(0.5f);
+                glm::vec3 ambientColor = lightColor * glm::vec3(0.2f);
 
                 UseShader(lightShader);
+
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, container2);
+                glActiveTexture(GL_TEXTURE1);
+                glBindTexture(GL_TEXTURE_2D, container2Specular);
+                glActiveTexture(GL_TEXTURE2);
+                glBindTexture(GL_TEXTURE_2D, matrix);
+
                 SetUniform(lightShader, "light.ambient", ambientColor);
                 SetUniform(lightShader, "light.diffuse", diffuseColor);
                 SetUniform(lightShader, "light.specular", 1.0f, 1.0f, 1.0f);
-                SetUniform(lightShader, "light.position", lightPos);
 
+                SetUniform(lightShader, "light.position", lightPos);
                 SetUniform(lightShader, "viewPos", debugCamera.position);
 
                 projection = glm::perspective(glm::radians(debugCamera.fov), f32(width / height), 0.1f, 100.0f);
@@ -700,25 +571,13 @@ int main()
                 SetUniform(lightShader, "view", view);
                 SetUniform(lightShader, "projection", projection);
 
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, container);
-                glActiveTexture(GL_TEXTURE1);
-                glBindTexture(GL_TEXTURE_2D, awesomeFace);
-
                 glBindVertexArray(vabo.VAO[cube]);
                 glm::vec3 cubePos = cubePositions[0];
                 for(u32 y = 0; y < 5; ++y)
                 {
                     for(u32 x = 0; x < 5; ++x)
                     {
-                        u32 matIdx = y*5 + x;
-                        if(matIdx >= ArrayCount(materialValues)) matIdx = ArrayCount(materialValues)-1;
-                        material cubeMaterial = materialValues[matIdx];
-
-                        SetUniform(lightShader, "material.ambient", cubeMaterial.ambient);
-                        SetUniform(lightShader, "material.diffuse", cubeMaterial.diffuse);
-                        SetUniform(lightShader, "material.specular", cubeMaterial.specular);
-                        SetUniform(lightShader, "material.shininess", cubeMaterial.shininess);
+                        SetUniform(lightShader, "material.shininess", 32.0f);
 
                         glm::mat4 model = glm::mat4(1.0f);
                         model = glm::translate(model, cubePositions[0]);
@@ -745,13 +604,13 @@ int main()
 
                 glm::mat4 model = glm::mat4(1.0f);
 
-                //lightPos.x = sin(timeValue)*3.0f+2.5f;
-                //lightPos.y = sin(timeValue*2)*2;
-                //lightPos.z = cos(timeValue)*3.0f+2.0f;
+                lightPos.x = sin(timeValue)*3.0f+2.5f;
+                lightPos.y = -2.0;//sin(timeValue*2)*2;
+                lightPos.z = cos(timeValue)*3.0f+2.0f;
 
-                lightPos.x = debugCamera.position.x + debugCamera.front.x;
-                lightPos.y = debugCamera.position.y + debugCamera.front.y;
-                lightPos.z = debugCamera.position.z + debugCamera.front.z;
+                //lightPos.x = debugCamera.position.x + debugCamera.front.x;
+                //lightPos.y = debugCamera.position.y + debugCamera.front.y;
+                //lightPos.z = debugCamera.position.z + debugCamera.front.z;
 
                 model = glm::translate(model, lightPos);
                 model = glm::scale(model, glm::vec3(0.2f));
