@@ -19,8 +19,8 @@
 
 #include "logl.h"
 
-void Quit(SDL_Window *window, SDL_GLContext context);
-#define err(msg) Quit(window, context); ThrowError(msg);
+void Quit(SDL_Window *window);
+#define err(msg) Quit(window); ThrowError(msg);
 
 global_variable b32 globalQuit = false;
 global_variable b32 firstMouse = true;
@@ -55,9 +55,8 @@ FramebufferSizeCallback(i32 width, i32 height)
 }
 
 void
-Quit(SDL_Window *window, SDL_GLContext context)
+Quit(SDL_Window *window)
 {
-    SDL_GL_DestroyContext(context);
     SDL_DestroyWindow(window);
     SDL_Quit();
 }
@@ -112,7 +111,7 @@ ProcessInput(my_window *myWindow, game_controller_input *keyboard, SDL_GLContext
         {
             log("ESCAPE PRESSED");
             globalQuit = true;
-            Quit(myWindow->window, context);
+            Quit(myWindow->window);
         }
 
         if(key[SDL_SCANCODE_W])
@@ -260,12 +259,12 @@ u32 GetVAOwithoutEBO(VABO *vabo, f32 *vertices, u32 nVerts)
     vabo->count[vabo->nVAO] = nVerts;
 
     glGenVertexArrays(1, &vabo->VAO[vabo->nVAO]);
-
-    glBindVertexArray(vabo->VAO[vabo->nVAO++]);
-
     glGenBuffers(1, &vabo->VBO[vabo->nVBO]);
+
     glBindBuffer(GL_ARRAY_BUFFER, vabo->VBO[vabo->nVBO++]);
     glBufferData(GL_ARRAY_BUFFER, nVerts*sizeof(*vertices + 0), vertices, GL_STATIC_DRAW);
+
+    glBindVertexArray(vabo->VAO[vabo->nVAO++]);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
@@ -284,12 +283,12 @@ f32 verticesWNormals[] = {
     -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
     -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
 
-    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-     0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+     0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
 
     -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
     -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
@@ -318,6 +317,40 @@ f32 verticesWNormals[] = {
      0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
     -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
     -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
+};
+
+struct material
+{
+    glm::vec3 ambient;
+    glm::vec3 diffuse;
+    glm::vec3 specular;
+    f32 shininess;
+};
+material materialValues[] = {
+{ glm::vec3(0.0215,0.1745,0.0215) ,glm::vec3(0.07568,0.61424,0.07568),glm::vec3(0.633,0.727811,0.633) ,0.6}, //emerald
+{ glm::vec3(0.135,0.2225,0.1575) ,glm::vec3(0.54,0.89,0.63) ,glm::vec3(0.316228,0.316228,0.316228),0.1}, //jade
+{ glm::vec3(0.05375,0.05,0.06625) ,glm::vec3(0.18275,0.17,0.22525) ,glm::vec3(0.332741,0.328634,0.346435),0.3}, //obsidian
+{ glm::vec3(0.25,0.20725,0.20725) ,glm::vec3(1,0.829,0.829) ,glm::vec3(0.296648,0.296648,0.296648),0.088}, //pearl
+{ glm::vec3(0.1745,0.01175,0.01175),glm::vec3(0.61424,0.04136,0.04136),glm::vec3(0.727811,0.626959,0.626959),0.6}, //ruby
+{ glm::vec3(0.1,0.18725,0.1745) ,glm::vec3(0.396,0.74151,0.69102) ,glm::vec3(0.297254,0.30829,0.306678) ,0.1}, //turquoise
+{ glm::vec3(0.329412,0.223529,0.027451),glm::vec3(0.780392,0.568627,0.113725), glm::vec3(0.992157,0.941176,0.807843),0.21794872}, //brass
+{ glm::vec3(0.2125,0.1275,0.054), glm::vec3(0.714,0.4284,0.18144) ,glm::vec3(0.393548,0.271906,0.166721), 0.2}, //bronze
+{ glm::vec3(0.25,0.25,0.25) ,glm::vec3(0.4,0.4,0.4) ,glm::vec3(0.774597,0.774597,0.774597), 0.6}, //chrome
+{ glm::vec3(0.19125,0.0735,0.0225) ,glm::vec3(0.7038,0.27048,0.0828) ,glm::vec3(0.256777,0.137622,0.086014),0.1}, //copper
+{ glm::vec3(0.24725,0.1995,0.0745) ,glm::vec3(0.75164,0.60648,0.22648) ,glm::vec3(0.628281,0.555802,0.366065),0.4}, //gold
+{ glm::vec3(0.19225,0.19225,0.19225),glm::vec3(0.50754,0.50754,0.50754) ,glm::vec3(0.508273,0.508273,0.508273),0.4}, //silver
+{ glm::vec3(0.0,0.0,0.0) ,glm::vec3(0.01,0.01,0.01) ,glm::vec3(0.50,0.50,0.50), .25 }, //black plastic
+{ glm::vec3(0.0,0.1,0.06) ,glm::vec3(0.0,0.50980392,0.50980392),glm::vec3(0.50196078,0.50196078,0.50196078), .25}, //cyan plastic
+{ glm::vec3(0.0,0.0,0.0) ,glm::vec3(0.1 ,0.35,0.1) ,glm::vec3(0.45,0.55,0.45),.25 }, //green plastic
+{ glm::vec3(0.0,0.0,0.0) ,glm::vec3(0.5 ,0.0,0.0) ,glm::vec3(0.7,0.6 ,0.6),.25 }, //red plastic
+{ glm::vec3(0.0,0.0,0.0) ,glm::vec3(0.55 ,0.55,0.55) ,glm::vec3(0.70,0.70,0.70),.25 }, //white plastic
+{ glm::vec3(0.0,0.0,0.0) ,glm::vec3(0.5 ,0.5,0.0) ,glm::vec3(0.60,0.60,0.50),.25 }, //yellow plastic
+{ glm::vec3(0.02,0.02,0.02) ,glm::vec3(0.01,0.01,0.01) ,glm::vec3(0.4,0.4 ,0.4),.078125}, //black rubber
+{ glm::vec3(0.0,0.05,0.05) ,glm::vec3(0.4 ,0.5,0.5) ,glm::vec3(0.04,0.7,0.7) ,.078125}, //cyan rubber
+{ glm::vec3(0.0,0.05,0.0) ,glm::vec3(0.4 ,0.5,0.4) ,glm::vec3(0.04,0.7,0.04) ,.078125}, //green rubber
+{ glm::vec3(0.05,0.0,0.0) ,glm::vec3(0.5 ,0.4,0.4) ,glm::vec3(0.7,0.04,0.04) ,.078125}, //red rubber
+{ glm::vec3(0.05,0.05,0.05) ,glm::vec3(0.5,0.5,0.5) ,glm::vec3(0.7,0.7,0.7) ,.078125}, //white rubber
+{ glm::vec3(0.05,0.05,0.0) ,glm::vec3(0.5,0.5,0.4) ,glm::vec3(0.7,0.7,0.04) ,.078125 } //yellow rubber
 };
 
 f32 textureVertices[] = {
@@ -444,10 +477,10 @@ f32 GetAlphaBlend(f32 frequency)
     return alphaBlend;
 }
 
-f32 GetSecondsElapsed(u64 lastCycleCount, u64 frequency)
+f32 GetSecondsElapsed(u64 upTime, u64 frequency)
 {
     u64 currTime = SDL_GetPerformanceCounter();
-    f32 timeValue = (f32)((currTime - lastCycleCount) / (f32)frequency);
+    f32 timeValue = (f32)((currTime - upTime) / (f32)frequency);
     return timeValue;
 }
 
@@ -548,10 +581,11 @@ int main()
 
         char *vertShaderPath = "../shaders/light.vs";
         char *fragShaderPath = "../shaders/light.fs";
-        lightShader = Shader(window, context, vertShaderPath, fragShaderPath);
+        lightShader = Shader(window, vertShaderPath, fragShaderPath);
 
+        vertShaderPath = "../shaders/lightSource.vs";
         fragShaderPath = "../shaders/lightSource.fs";
-        sourceLightShader = Shader(window, context, vertShaderPath, fragShaderPath);
+        sourceLightShader = Shader(window, vertShaderPath, fragShaderPath);
         glm::vec3 lightPos(1.2f, 0.0f, 2.0f);
 
         u32 nVerts1 = ArrayCount(middleTriangleVertices);
@@ -561,7 +595,7 @@ int main()
         u32 triangle2 = GetVAOwithoutEBO(&vabo, triangleVertices1, nVerts2);
 
         u32 nSquareVerts = ArrayCount(verticesWNormals);
-        u32 rectangle = GetVAOwithoutEBO(&vabo, verticesWNormals, nSquareVerts);
+        u32 cube = GetVAOwithoutEBO(&vabo, verticesWNormals, nSquareVerts);
         u32 lightSourceCube = GetVAOwithoutEBO(&vabo, verticesWNormals, nSquareVerts);
         glEnable(GL_DEPTH_TEST);
 
@@ -643,11 +677,21 @@ int main()
                 f32 timeValue = GetSecondsElapsed(upTime, frequency);
                 f32 ab = GetAlphaBlend(1.0f);
 
+                glm::vec3 lightColor;
+                lightColor.x = 0.2;//sin(timeValue * 2.0f);
+                lightColor.y = 0.2;//sin(timeValue * 0.7f);
+                lightColor.z = 0.2;//sin(timeValue * 1.3f);
+
+                glm::vec3 diffuseColor = lightColor   * glm::vec3(1.0f);
+                glm::vec3 ambientColor = diffuseColor * glm::vec3(1.0f);
+
                 UseShader(lightShader);
-                SetUniform(lightShader, "objectColor", 1.0f, 0.5f, 0.31f);
-                SetUniform(lightShader, "lightColor", 1.0f, 1.0f, 1.0f);
-                SetUniform(lightShader, "lightPos", lightPos);
-                SetUniform(lightShader, "lookDir", debugCamera.position);
+                SetUniform(lightShader, "light.ambient", ambientColor);
+                SetUniform(lightShader, "light.diffuse", diffuseColor);
+                SetUniform(lightShader, "light.specular", 1.0f, 1.0f, 1.0f);
+                SetUniform(lightShader, "light.position", lightPos);
+
+                SetUniform(lightShader, "viewPos", debugCamera.position);
 
                 projection = glm::perspective(glm::radians(debugCamera.fov), f32(width / height), 0.1f, 100.0f);
                 GetCameraDirection(&myWindow, newInput, &debugCamera, &lastMouseX, &lastMouseY);
@@ -661,30 +705,54 @@ int main()
                 glActiveTexture(GL_TEXTURE1);
                 glBindTexture(GL_TEXTURE_2D, awesomeFace);
 
-                glBindVertexArray(vabo.VAO[rectangle]);
-                for(u32 i = 0; i < 1; ++i)
+                glBindVertexArray(vabo.VAO[cube]);
+                glm::vec3 cubePos = cubePositions[0];
+                for(u32 y = 0; y < 5; ++y)
                 {
-                    glm::mat4 model = glm::mat4(1.0f);
-                    model = glm::translate(model, cubePositions[i]);
-                    //f32 angle = 20.0f * i;
-                    //model = glm::rotate(model, angle, glm::vec3(1.0f, 0.0f, 0.0f));
-                    //if(i % 3 == 0 || i == 0)
-                    //{
-                    //    model = glm::rotate(model, sin(timeValue), glm::vec3(1.0f, 1.0f, 0.0f));
-                    //}
-                    SetUniform(lightShader, "model", model);
+                    for(u32 x = 0; x < 5; ++x)
+                    {
+                        u32 matIdx = y*5 + x;
+                        if(matIdx >= ArrayCount(materialValues)) matIdx = ArrayCount(materialValues)-1;
+                        material cubeMaterial = materialValues[matIdx];
 
-                    glDrawArrays(GL_TRIANGLES, 0, vabo.count[rectangle]);
+                        SetUniform(lightShader, "material.ambient", cubeMaterial.ambient);
+                        SetUniform(lightShader, "material.diffuse", cubeMaterial.diffuse);
+                        SetUniform(lightShader, "material.specular", cubeMaterial.specular);
+                        SetUniform(lightShader, "material.shininess", cubeMaterial.shininess);
+
+                        glm::mat4 model = glm::mat4(1.0f);
+                        model = glm::translate(model, cubePositions[0]);
+                        cubePositions[0].x += 1.2;
+                        //f32 angle = 20.0f * x;
+                        //model = glm::rotate(model, angle, glm::vec3(1.0f, 0.0f, 0.0f));
+                        //if(x % 3 == 0 || x == 0 )
+                        //{
+                        //    model = glm::rotate(model, sin(timeValue)*5, glm::vec3(1.0f, 1.0f, 0.0f));
+                        //}
+                        SetUniform(lightShader, "model", model);
+
+                        glDrawArrays(GL_TRIANGLES, 0, vabo.count[cube]);
+                    }
+                    cubePositions[0].x = cubePos.x;
+                    cubePositions[0].y -= 1.2;
                 }
+                cubePositions[0] = cubePos;
 
                 UseShader(sourceLightShader);
                 SetUniform(sourceLightShader, "view", view);
                 SetUniform(sourceLightShader, "projection", projection);
+                SetUniform(sourceLightShader, "color", lightColor);
 
                 glm::mat4 model = glm::mat4(1.0f);
-                lightPos.x = sin(timeValue)*2;
-                lightPos.y = 0;//sin(timeValue)*2;
-                lightPos.z = cos(timeValue)*2;
+
+                //lightPos.x = sin(timeValue)*3.0f+2.5f;
+                //lightPos.y = sin(timeValue*2)*2;
+                //lightPos.z = cos(timeValue)*3.0f+2.0f;
+
+                lightPos.x = debugCamera.position.x + debugCamera.front.x;
+                lightPos.y = debugCamera.position.y + debugCamera.front.y;
+                lightPos.z = debugCamera.position.z + debugCamera.front.z;
+
                 model = glm::translate(model, lightPos);
                 model = glm::scale(model, glm::vec3(0.2f));
                 SetUniform(sourceLightShader, "model", model);
@@ -716,6 +784,6 @@ int main()
     glDeleteProgram(lightShader);
     glDeleteProgram(sourceLightShader);
 
-    Quit(window, context);
+    Quit(window);
     return 0;
 }

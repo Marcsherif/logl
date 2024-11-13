@@ -112,6 +112,12 @@ GetCameraDirection(my_window *window, game_input *input, my_camera *cam, f32 *la
 glm::mat4
 GetViewMatrix(my_camera *camera)
 {
+    return glm::lookAt(camera->position, camera->position + camera->front, camera->up);
+}
+
+glm::mat4
+MYDEBUGGetViewMatrix(my_camera *camera)
+{
     glm::vec3 eye = camera->position;
     glm::vec3 center = camera->position + camera->front;
     glm::vec3 up = camera->up;

@@ -1,5 +1,5 @@
 internal u32
-Shader(SDL_Window *window, SDL_GLContext context, const char *vertexPath, const char *fragmentPath)
+Shader(SDL_Window *window, const char *vertexPath, const char *fragmentPath)
 {
     // TODO: Load Files and error check, and do hot realoding, and do a hash
     SDL_IOStream *vertFile = SDL_IOFromFile(vertexPath, "rb");
@@ -30,6 +30,7 @@ Shader(SDL_Window *window, SDL_GLContext context, const char *vertexPath, const 
         log(infoLog);
         err(infoLog);
     }
+    log("[Vertex Shader] %s Initialized", vertexPath);
 
     u32 fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragmentShader, 1, &fragPtr, NULL);
@@ -43,6 +44,7 @@ Shader(SDL_Window *window, SDL_GLContext context, const char *vertexPath, const 
         log(infoLog);
         err(infoLog);
     }
+    log("[Fragment Shader] %s Initialized", fragmentPath);
 
     u32 shaderProgram;
     shaderProgram = glCreateProgram();
@@ -60,6 +62,7 @@ Shader(SDL_Window *window, SDL_GLContext context, const char *vertexPath, const 
         log(infoLog);
         err(infoLog);
     }
+    log("[Shader] linking successful");
 
     VirtualFree(vertPtr, 0, MEM_RELEASE);
     VirtualFree(fragPtr, 0, MEM_RELEASE);
