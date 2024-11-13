@@ -561,10 +561,19 @@ int main()
                 SetUniform(lightShader, "light.diffuse", diffuseColor);
                 SetUniform(lightShader, "light.specular", 1.0f, 1.0f, 1.0f);
 
-                SetUniform(lightShader, "light.position", lightPos);
+                SetUniform(lightShader, "light.position", debugCamera.position);
+                SetUniform(lightShader, "light.direction", debugCamera.front);
+                SetUniform(lightShader, "light.cutOff", (f32)glm::cos(glm::radians(12.5)));
+                SetUniform(lightShader, "light.outerCutOff", (f32)glm::cos(glm::radians(17.5)));
+
+                SetUniform(lightShader, "light.constant", 1.0f);
+                SetUniform(lightShader, "light.linear", 0.09f);
+                SetUniform(lightShader, "light.quadratic", 0.032f);
+
                 SetUniform(lightShader, "viewPos", debugCamera.position);
 
                 projection = glm::perspective(glm::radians(debugCamera.fov), f32(width / height), 0.1f, 100.0f);
+                // TODO(marc): behaves weird around corners/diagonal movements.
                 GetCameraDirection(&myWindow, newInput, &debugCamera, &lastMouseX, &lastMouseY);
                 glm::mat4 view = GetViewMatrix(&debugCamera);
 
@@ -580,8 +589,8 @@ int main()
                         SetUniform(lightShader, "material.shininess", 32.0f);
 
                         glm::mat4 model = glm::mat4(1.0f);
-                        model = glm::translate(model, cubePositions[0]);
-                        cubePositions[0].x += 1.2;
+                        model = glm::translate(model, cubePositions[y*5+x]);
+                        //cubePositions[0].x += 1.2;
                         //f32 angle = 20.0f * x;
                         //model = glm::rotate(model, angle, glm::vec3(1.0f, 0.0f, 0.0f));
                         //if(x % 3 == 0 || x == 0 )
@@ -592,8 +601,8 @@ int main()
 
                         glDrawArrays(GL_TRIANGLES, 0, vabo.count[cube]);
                     }
-                    cubePositions[0].x = cubePos.x;
-                    cubePositions[0].y -= 1.2;
+                    //cubePositions[0].x = cubePos.x;
+                    //cubePositions[0].y -= 1.2;
                 }
                 cubePositions[0] = cubePos;
 
@@ -604,9 +613,9 @@ int main()
 
                 glm::mat4 model = glm::mat4(1.0f);
 
-                lightPos.x = sin(timeValue)*3.0f+2.5f;
-                lightPos.y = -2.0;//sin(timeValue*2)*2;
-                lightPos.z = cos(timeValue)*3.0f+2.0f;
+                //lightPos.x = sin(timeValue)*3.0f+2.5f;
+                //lightPos.y = -2.0;//sin(timeValue*2)*2;
+                //lightPos.z = cos(timeValue)*3.0f+2.0f;
 
                 //lightPos.x = debugCamera.position.x + debugCamera.front.x;
                 //lightPos.y = debugCamera.position.y + debugCamera.front.y;
