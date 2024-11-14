@@ -306,6 +306,13 @@ glm::vec3 cubePositions[] = {
     glm::vec3(-1.3f,  1.0f, -1.5f)
 };
 
+glm::vec3 pointLightPositions[] = {
+	glm::vec3( 0.7f,  0.2f,  2.0f),
+	glm::vec3( 2.3f, -3.3f, -4.0f),
+	glm::vec3(-4.0f,  2.0f, -12.0f),
+	glm::vec3( 0.0f,  0.0f, -3.0f)
+};
+
 u32 GetVAOwithEBO(VABO *vabo, f32 *vertices, u32 nVerts, u32 *indices, u32 nIndices)
 {
     u32 vaoIndex = vabo->nVAO;
@@ -448,7 +455,6 @@ int main()
         vertShaderPath = "../shaders/lightSource.vs";
         fragShaderPath = "../shaders/lightSource.fs";
         sourceLightShader = Shader(window, vertShaderPath, fragShaderPath);
-        glm::vec3 lightPos(1.2f, 0.0f, 2.0f);
 
         u32 nSquareVerts = ArrayCount(cubeVertices);
         u32 cube = GetVAOwithoutEBO(&vabo, cubeVertices, nSquareVerts);
@@ -540,15 +546,71 @@ int main()
                 f32 timeValue = GetSecondsElapsed(upTime, frequency);
                 f32 ab = GetAlphaBlend(1.0f);
 
-                glm::vec3 lightColor;
-                lightColor.x = 1.0;//sin(timeValue * 2.0f);
-                lightColor.y = 1.0;//sin(timeValue * 0.7f);
-                lightColor.z = 1.0;//sin(timeValue * 1.3f);
-
-                glm::vec3 diffuseColor = lightColor   * glm::vec3(0.5f);
-                glm::vec3 ambientColor = lightColor * glm::vec3(0.2f);
-
                 UseShader(lightShader);
+
+                SetUniform(lightShader, "viewPos", debugCamera.position);
+
+                glm::vec3 lightColor;
+                lightColor.x = 0.4f;//1.0;
+                lightColor.y = 0.7f;//1.0;
+                lightColor.z = 0.1f;//1.0;
+
+                // spotLight
+                SetUniform(lightShader, "spotLight.ambient", 0.0f, 0.0f, 0.0f);
+                SetUniform(lightShader, "spotLight.diffuse", 1.0f, 1.0f, 1.0f);
+                SetUniform(lightShader, "spotLight.specular", 1.0f, 1.0f, 1.0f);
+                SetUniform(lightShader, "spotLight.position", debugCamera.position);
+                SetUniform(lightShader, "spotLight.direction", debugCamera.front);
+                SetUniform(lightShader, "spotLight.constant", 1.0f);
+                SetUniform(lightShader, "spotLight.linear", 0.09f);
+                SetUniform(lightShader, "spotLight.quadratic", 0.032f);
+                SetUniform(lightShader, "spotLight.cutOff", (f32)glm::cos(glm::radians(12.5)));
+                SetUniform(lightShader, "spotLight.outerCutOff", (f32)glm::cos(glm::radians(15.0)));
+
+                // TODO(marc): behaves weird around corners/diagonal movements.
+                GetCameraDirection(&myWindow, newInput, &debugCamera, &lastMouseX, &lastMouseY);
+
+                projection = glm::perspective(glm::radians(debugCamera.fov), f32(width / height), 0.1f, 100.0f);
+                glm::mat4 view = GetViewMatrix(&debugCamera);
+                SetUniform(lightShader, "projection", projection);
+                SetUniform(lightShader, "view", view);
+
+                // directional light
+                SetUniform(lightShader, "dirLight.direction", -0.2f, -1.0f, -0.3f);
+                SetUniform(lightShader, "dirLight.ambient", 0.05f, 0.05f, 0.05f);
+                SetUniform(lightShader, "dirLight.diffuse", 0.4f, 0.4f, 0.4f);
+                SetUniform(lightShader, "dirLight.specular", 0.5f, 0.5f, 0.5f);
+
+                // point light 1-4
+                char position[25];
+                char ambient[25];
+                char diffuse[25];
+                char specular[25];
+                char constant[25];
+                char linear[25];
+                char quadratic[25];
+
+                for(u32 x = 0; x < ArrayCount(pointLightPositions); ++x)
+                {
+                    snprintf(position, sizeof(position), "pointLights[%d].position", x);
+                    snprintf(ambient,  sizeof(ambient),  "pointLights[%d].ambient",  x);
+                    snprintf(diffuse,  sizeof(diffuse),  "pointLights[%d].diffuse",  x);
+                    snprintf(specular, sizeof(specular), "pointLights[%d].specular", x);
+                    snprintf(constant, sizeof(constant), "pointLights[%d].constant", x);
+                    snprintf(linear,   sizeof(linear),   "pointLights[%d].linear",   x);
+                    snprintf(quadratic,sizeof(quadratic),"pointLights[%d].quadratic",x);
+
+                    SetUniform(lightShader, position,  pointLightPositions[x]);
+                    SetUniform(lightShader, ambient,   lightColor*0.1f);
+                    SetUniform(lightShader, diffuse,   lightColor);
+                    SetUniform(lightShader, specular,  1.0f, 1.0f, 1.0f);
+                    SetUniform(lightShader, constant,  1.0f);
+                    SetUniform(lightShader, linear,    0.09f);
+                    SetUniform(lightShader, quadratic, 0.032f);
+                }
+
+                glm::mat4 model = glm::mat4(1.0f);
+                SetUniform(lightShader, "model", model);
 
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, container2);
@@ -557,76 +619,41 @@ int main()
                 glActiveTexture(GL_TEXTURE2);
                 glBindTexture(GL_TEXTURE_2D, matrix);
 
-                SetUniform(lightShader, "light.ambient", ambientColor);
-                SetUniform(lightShader, "light.diffuse", diffuseColor);
-                SetUniform(lightShader, "light.specular", 1.0f, 1.0f, 1.0f);
-
-                SetUniform(lightShader, "light.position", debugCamera.position);
-                SetUniform(lightShader, "light.direction", debugCamera.front);
-                SetUniform(lightShader, "light.cutOff", (f32)glm::cos(glm::radians(12.5)));
-                SetUniform(lightShader, "light.outerCutOff", (f32)glm::cos(glm::radians(17.5)));
-
-                SetUniform(lightShader, "light.constant", 1.0f);
-                SetUniform(lightShader, "light.linear", 0.09f);
-                SetUniform(lightShader, "light.quadratic", 0.032f);
-
-                SetUniform(lightShader, "viewPos", debugCamera.position);
-
-                projection = glm::perspective(glm::radians(debugCamera.fov), f32(width / height), 0.1f, 100.0f);
-                // TODO(marc): behaves weird around corners/diagonal movements.
-                GetCameraDirection(&myWindow, newInput, &debugCamera, &lastMouseX, &lastMouseY);
-                glm::mat4 view = GetViewMatrix(&debugCamera);
-
-                SetUniform(lightShader, "view", view);
-                SetUniform(lightShader, "projection", projection);
-
                 glBindVertexArray(vabo.VAO[cube]);
-                glm::vec3 cubePos = cubePositions[0];
-                for(u32 y = 0; y < 5; ++y)
+                for(u32 x = 0; x < 10; ++x)
                 {
-                    for(u32 x = 0; x < 5; ++x)
-                    {
-                        SetUniform(lightShader, "material.shininess", 32.0f);
+                    SetUniform(lightShader, "material.shininess", 32.0f);
 
-                        glm::mat4 model = glm::mat4(1.0f);
-                        model = glm::translate(model, cubePositions[y*5+x]);
-                        //cubePositions[0].x += 1.2;
-                        //f32 angle = 20.0f * x;
-                        //model = glm::rotate(model, angle, glm::vec3(1.0f, 0.0f, 0.0f));
-                        //if(x % 3 == 0 || x == 0 )
-                        //{
-                        //    model = glm::rotate(model, sin(timeValue)*5, glm::vec3(1.0f, 1.0f, 0.0f));
-                        //}
-                        SetUniform(lightShader, "model", model);
+                    model = glm::mat4(1.0f);
+                    model = glm::translate(model, cubePositions[x]);
+                    f32 angle = 20.0f * x;
+                    model = glm::rotate(model, angle, glm::vec3(1.0f, 0.0f, 0.0f));
+                    SetUniform(lightShader, "model", model);
 
-                        glDrawArrays(GL_TRIANGLES, 0, vabo.count[cube]);
-                    }
-                    //cubePositions[0].x = cubePos.x;
-                    //cubePositions[0].y -= 1.2;
+                    glDrawArrays(GL_TRIANGLES, 0, vabo.count[cube]);
                 }
-                cubePositions[0] = cubePos;
+
+                //lightPos.x = sin(timeValue)*3.0f+2.5f;
+                //lightPos.y = -2.0;//sin(timeValue*2)*2;
+                //lightPos.z = cos(timeValue)*3.0f+2.0f;
 
                 UseShader(sourceLightShader);
                 SetUniform(sourceLightShader, "view", view);
                 SetUniform(sourceLightShader, "projection", projection);
                 SetUniform(sourceLightShader, "color", lightColor);
 
-                glm::mat4 model = glm::mat4(1.0f);
-
-                //lightPos.x = sin(timeValue)*3.0f+2.5f;
-                //lightPos.y = -2.0;//sin(timeValue*2)*2;
-                //lightPos.z = cos(timeValue)*3.0f+2.0f;
-
-                //lightPos.x = debugCamera.position.x + debugCamera.front.x;
-                //lightPos.y = debugCamera.position.y + debugCamera.front.y;
-                //lightPos.z = debugCamera.position.z + debugCamera.front.z;
-
-                model = glm::translate(model, lightPos);
-                model = glm::scale(model, glm::vec3(0.2f));
-                SetUniform(sourceLightShader, "model", model);
 
                 glBindVertexArray(vabo.VAO[lightSourceCube]);
-                glDrawArrays(GL_TRIANGLES, 0, vabo.count[lightSourceCube]);
+                for(u32 x = 0; x < ArrayCount(pointLightPositions); ++x)
+                {
+                    model = glm::mat4(1.0f);
+                    model = glm::translate(model, pointLightPositions[x]);
+                    model = glm::scale(model, glm::vec3(0.2f));
+
+                    SetUniform(sourceLightShader, "model", model);
+
+                    glDrawArrays(GL_TRIANGLES, 0, vabo.count[lightSourceCube]);
+                }
 
                 SDL_GL_SwapWindow(window);
 
