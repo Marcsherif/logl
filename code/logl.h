@@ -25,15 +25,19 @@ InitializeArena(memory_arena *Arena, memory_index Size, void *Base)
 inline void *
 PushSize_(memory_arena *Arena, memory_index Size)
 {
-    Assert((Arena->Used + Size) <= Arena->Size);
+    if(!((Arena->Used + Size) <= Arena->Size))
+    {
+        ThrowError("MemoryArena Overflow!");
+    }
     void *Result = Arena->Base + Arena->Used;
     Arena->Used += Size;
     return(Result);
 }
 
-#include "sdl_main.h"
+#include "logl_main.h"
 #include "logl_shader.h"
 #include "logl_camera.h"
+#include "logl_gltf.h"
 
 #define LOGL_H
 #endif

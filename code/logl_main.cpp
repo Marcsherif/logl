@@ -11,11 +11,11 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/string_cast.hpp>
-
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image/stb_image.h>
+
+#define CGLTF_IMPLEMENTATION
+#include <cgltf/cgltf.h>
 
 #include "logl.h"
 
@@ -29,6 +29,8 @@ global_variable f64 FPS = 0;
 
 #include "logl_shader.cpp"
 #include "logl_camera.cpp"
+u32 GetTexture(char *texturePath, u32 wrappingMethod);
+#include "logl_gltf.cpp"
 
 struct VABO
 {
@@ -410,8 +412,7 @@ int main()
                                           SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
     SDL_GLContext context = 0;
 
-    u32 shapeCount = 4;
-    u64 memorySize = sizeof(VABO)*shapeCount;
+    u64 memorySize = Megabytes(4);
     void *memory = (void *)VirtualAlloc(0, memorySize, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
     memory_arena arena = {};
     InitializeArena(&arena, memorySize, (u8 *)memory);
@@ -448,6 +449,9 @@ int main()
 
         glViewport(0, 0, width, height);
 
+        gltf_model backpack = {};
+        LoadModel(&backpack, &arena, "../data/backpack/backpack.glb");
+
         char *vertShaderPath = "../shaders/light.vs";
         char *fragShaderPath = "../shaders/light.fs";
         lightShader = Shader(window, vertShaderPath, fragShaderPath);
@@ -460,17 +464,6 @@ int main()
         u32 cube = GetVAOwithoutEBO(&vabo, cubeVertices, nSquareVerts);
         u32 lightSourceCube = GetVAOwithoutEBO(&vabo, cubeVertices, nSquareVerts);
         glEnable(GL_DEPTH_TEST);
-
-        u32 container = GetTexture("../data/container.jpg", GL_MIRRORED_REPEAT);
-        u32 container2 = GetTexture("../data/container2.png", GL_MIRRORED_REPEAT);
-        u32 container2Specular = GetTexture("../data/container2_specular.png", GL_MIRRORED_REPEAT);
-        u32 matrix = GetTexture("../data/matrix.jpg", GL_MIRRORED_REPEAT);
-        u32 awesomeFace = GetTexture("../data/awesomeface.png", GL_MIRRORED_REPEAT);
-
-        UseShader(lightShader);
-        SetUniform(lightShader, "material.diffuse", 0);
-        SetUniform(lightShader, "material.specular", 1);
-        SetUniform(lightShader, "material.emission", 2);
 
         glm::mat4 projection;
         projection = glm::perspective(glm::radians(45.0f), f32(width / height), 0.1f, 100.0f);
@@ -551,9 +544,9 @@ int main()
                 SetUniform(lightShader, "viewPos", debugCamera.position);
 
                 glm::vec3 lightColor;
-                lightColor.x = 0.4f;//1.0;
-                lightColor.y = 0.7f;//1.0;
-                lightColor.z = 0.1f;//1.0;
+                lightColor.x = 1.0;//0.4f;
+                lightColor.y = 1.0;//0.7f;
+                lightColor.z = 1.0;//0.1f;
 
                 // spotLight
                 SetUniform(lightShader, "spotLight.ambient", 0.0f, 0.0f, 0.0f);
@@ -582,13 +575,13 @@ int main()
                 SetUniform(lightShader, "dirLight.specular", 0.5f, 0.5f, 0.5f);
 
                 // point light 1-4
-                char position[25];
-                char ambient[25];
-                char diffuse[25];
-                char specular[25];
-                char constant[25];
-                char linear[25];
-                char quadratic[25];
+                char position[30];
+                char ambient[30];
+                char diffuse[30];
+                char specular[30];
+                char constant[30];
+                char linear[30];
+                char quadratic[30];
 
                 for(u32 x = 0; x < ArrayCount(pointLightPositions); ++x)
                 {
@@ -600,54 +593,29 @@ int main()
                     snprintf(linear,   sizeof(linear),   "pointLights[%d].linear",   x);
                     snprintf(quadratic,sizeof(quadratic),"pointLights[%d].quadratic",x);
 
-                    SetUniform(lightShader, position,  pointLightPositions[x]);
+                    SetUniform(lightShader, position, glm::vec3(0, sin(timeValue)*2, cos(timeValue)*2));
                     SetUniform(lightShader, ambient,   lightColor*0.1f);
                     SetUniform(lightShader, diffuse,   lightColor);
-                    SetUniform(lightShader, specular,  1.0f, 1.0f, 1.0f);
+                    SetUniform(lightShader, specular,  0.8f, 0.8f, 0.8f);
                     SetUniform(lightShader, constant,  1.0f);
                     SetUniform(lightShader, linear,    0.09f);
                     SetUniform(lightShader, quadratic, 0.032f);
                 }
+                SetUniform(lightShader, "material.shininess", (f32)32);
 
-                glm::mat4 model = glm::mat4(1.0f);
-                SetUniform(lightShader, "model", model);
-
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, container2);
-                glActiveTexture(GL_TEXTURE1);
-                glBindTexture(GL_TEXTURE_2D, container2Specular);
-                glActiveTexture(GL_TEXTURE2);
-                glBindTexture(GL_TEXTURE_2D, matrix);
-
-                glBindVertexArray(vabo.VAO[cube]);
-                for(u32 x = 0; x < 10; ++x)
-                {
-                    SetUniform(lightShader, "material.shininess", 32.0f);
-
-                    model = glm::mat4(1.0f);
-                    model = glm::translate(model, cubePositions[x]);
-                    f32 angle = 20.0f * x;
-                    model = glm::rotate(model, angle, glm::vec3(1.0f, 0.0f, 0.0f));
-                    SetUniform(lightShader, "model", model);
-
-                    glDrawArrays(GL_TRIANGLES, 0, vabo.count[cube]);
-                }
-
-                //lightPos.x = sin(timeValue)*3.0f+2.5f;
-                //lightPos.y = -2.0;//sin(timeValue*2)*2;
-                //lightPos.z = cos(timeValue)*3.0f+2.0f;
+                DrawModel(&backpack, lightShader);
 
                 UseShader(sourceLightShader);
                 SetUniform(sourceLightShader, "view", view);
                 SetUniform(sourceLightShader, "projection", projection);
                 SetUniform(sourceLightShader, "color", lightColor);
 
-
+                glm::mat4 model = glm::mat4(1.0f);
                 glBindVertexArray(vabo.VAO[lightSourceCube]);
                 for(u32 x = 0; x < ArrayCount(pointLightPositions); ++x)
                 {
                     model = glm::mat4(1.0f);
-                    model = glm::translate(model, pointLightPositions[x]);
+                    model = glm::translate(model, glm::vec3(0, sin(timeValue)*2, cos(timeValue)*2));
                     model = glm::scale(model, glm::vec3(0.2f));
 
                     SetUniform(sourceLightShader, "model", model);

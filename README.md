@@ -7,7 +7,7 @@ day 5 input and camera
 
 day 6 basic lighting
 
-day 7 lighting materials and flashlight:
+day 7 lighting materials and maps and flashlight:
 
 
 https://github.com/user-attachments/assets/21d35ed2-f758-431c-b07f-79786146c5e5

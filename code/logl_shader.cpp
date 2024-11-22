@@ -101,6 +101,12 @@ SetUniform(u32 Id, const char *name, glm::vec3 value)
 }
 
 internal void
+SetUniform(u32 Id, const char *name, f32 x, f32 y)
+{
+    glUniform2f(glGetUniformLocation(Id, name), x, y);
+}
+
+internal void
 SetUniform(u32 Id, const char *name, f32 x, f32 y, f32 z)
 {
     glUniform3f(glGetUniformLocation(Id, name), x, y, z);

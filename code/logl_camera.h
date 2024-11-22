@@ -1,4 +1,4 @@
-#if !defined(SDL_CAMERA_H)
+#if !defined(LOGL_CAMERA_H)
 
 enum camOptions
 {
@@ -23,5 +23,5 @@ struct my_camera
     camOptions options;
 };
 
-#define SDL_CAMERA_H
+#define LOGL_CAMERA_H
 #endif

@@ -16,7 +16,7 @@ void main()
 {
     FragPos = vec3(model * vec4(aPos, 1.0f));
     Normal = mat3(transpose(inverse(model))) * aNormal;
-    TexCoords = aTexCoords;
+    TexCoords = vec2(aTexCoords.x, 1-aTexCoords.y);
 
     // in real application, calculate the normal matrix on the cpu and send it
     // via a uniform, since inverse operation is costly.

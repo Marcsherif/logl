@@ -1,5 +1,5 @@
 @echo off
 
 pushd build
-call sdl_main.exe
+call logl_main.exe
 popd
