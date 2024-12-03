@@ -47,15 +47,15 @@ DrawNode(gltf_node *node, gltf_texture *textures, u32 nTextures, i32 shader)
         u32 index = indexArray[i];
         glActiveTexture(GL_TEXTURE0 + i);
 
-        char *number = 0;
+        char number[16] = {};
         char *name = textures[index].type;
         if(!strcmp(name,"diffuse"))
         {
-            snprintf(number, sizeof(char), "%d", diffuseNr++);
+            snprintf(number, sizeof(number), "%d", diffuseNr++);
         }
         else if(!strcmp(name, "specular"))
         {
-            snprintf(number, sizeof(char), "%d", specularNr++);
+            snprintf(number, sizeof(number), "%d", specularNr++);
         }
 
         char uniformName[64] = {};
@@ -68,37 +68,6 @@ DrawNode(gltf_node *node, gltf_texture *textures, u32 nTextures, i32 shader)
 
     glDrawElements(GL_TRIANGLES, prim->nIndices, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
-}
-
-void
-CalculateNormals(gltf_vertex *vertices, u32 *indices, cgltf_size vertexCount, cgltf_size indexCount)
-{
-    for (cgltf_size i = 0; i < vertexCount; ++i)
-    {
-        vertices[i].normal = glm::vec3(0.0f);
-    }
-
-    for (cgltf_size i = 0; i < indexCount; i+=3)
-    {
-        glm::vec3 v0 = vertices[indices[i+0]].position;
-        glm::vec3 v1 = vertices[indices[i+1]].position;
-        glm::vec3 v2 = vertices[indices[i+2]].position;
-
-        glm::vec3 edge1 = v1 - v0;
-        glm::vec3 edge2 = v2 - v0;
-
-        glm::vec3 faceNormal = glm::normalize(glm::cross(edge1, edge2));
-
-        vertices[indices[i+0]].normal += faceNormal;
-        vertices[indices[i+1]].normal += faceNormal;
-        vertices[indices[i+2]].normal += faceNormal;
-    }
-
-    // Normalize vertex normals
-    for (cgltf_size i = 0; i < vertexCount; ++i)
-    {
-        vertices[i].normal = glm::normalize(vertices[i].normal);
-    }
 }
 
 internal void
@@ -154,7 +123,6 @@ ProcessPrimitives(gltf_model *model, memory_arena *arena, cgltf_primitive *primi
         indices[i] = (u32)cgltf_accessor_read_index(primitives->indices, i);
     }
 
-    //CalculateNormals(vertices, indices, vertexCount, indexCount);
     // setup buffers
     prim->vertices = vertices;
     prim->nVerts = (u32)vertexCount;
@@ -180,16 +148,17 @@ ProcessPrimitives(gltf_model *model, memory_arena *arena, cgltf_primitive *primi
         b32 skip = 0;
         if(!model->textures[0].type)
         {
-            char fullPath[126];
+            char fullPath[256];
             snprintf(fullPath, sizeof(fullPath), "../data/backpack/%s.jpg", name);
             diffuse.id = GetTexture(fullPath, GL_MIRRORED_REPEAT);
 
-            model->textures[model->nTextures] = diffuse;
+            model->textures[model->nTextures].id = diffuse.id;
+            model->textures[model->nTextures].type = "diffuse";
             model->textures[model->nTextures].index = model->nTextures;
             model->nTextures++;
         }
 
-        for(u32 i = 0; i < model->nTextures; ++i)
+        for(u32 i = 0; i < model->nTextures && skip == 0; ++i)
         {
             if(!strcmp(model->textures[i].type, name))
             {
@@ -200,12 +169,13 @@ ProcessPrimitives(gltf_model *model, memory_arena *arena, cgltf_primitive *primi
 
         if(!skip)
         {
-            char fullPath[126];
+            char fullPath[256];
             snprintf(fullPath, sizeof(fullPath), "../data/backpack/%s.jpg", name);
             diffuse.id = GetTexture(fullPath, GL_MIRRORED_REPEAT);
 
             model->textures[model->nTextures] = *PushStruct(arena, gltf_texture);
-            model->textures[model->nTextures] = diffuse;
+            model->textures[model->nTextures].id = diffuse.id;
+            model->textures[model->nTextures].type = "diffuse";
             model->textures[model->nTextures].index = model->nTextures;
             prim->textureIndex[prim->nTextures++] = model->nTextures;
             model->nTextures++;
@@ -222,16 +192,17 @@ ProcessPrimitives(gltf_model *model, memory_arena *arena, cgltf_primitive *primi
         b32 skip = 0;
         if(!model->textures[0].type)
         {
-            char fullPath[126];
+            char fullPath[256];
             snprintf(fullPath, sizeof(fullPath), "../data/backpack/%s.jpg", name);
             specular.id = GetTexture(fullPath, GL_MIRRORED_REPEAT);
 
-            model->textures[model->nTextures] = specular;
+            model->textures[model->nTextures].id = specular.id;
+            model->textures[model->nTextures].type = "specular";
             model->textures[model->nTextures].index = model->nTextures;
             model->nTextures++;
         }
 
-        for(u32 i = 0; i < model->nTextures; ++i)
+        for(u32 i = 0; i < model->nTextures && skip == 0; ++i)
         {
             if(!strcmp(model->textures[i].type, name))
             {
@@ -242,12 +213,13 @@ ProcessPrimitives(gltf_model *model, memory_arena *arena, cgltf_primitive *primi
 
         if(!skip)
         {
-            char fullPath[126];
+            char fullPath[256];
             snprintf(fullPath, sizeof(fullPath), "../data/backpack/%s.jpg", name);
             specular.id = GetTexture(fullPath, GL_MIRRORED_REPEAT);
 
             model->textures[model->nTextures] = *PushStruct(arena, gltf_texture);
-            model->textures[model->nTextures] = specular;
+            model->textures[model->nTextures].id = specular.id;
+            model->textures[model->nTextures].type = "specular";
             model->textures[model->nTextures].index = model->nTextures;
             prim->textureIndex[prim->nTextures++] = model->nTextures;
             model->nTextures++;
@@ -295,20 +267,27 @@ ProcessNode(gltf_model *model, memory_arena *arena, cgltf_node *node, gltf_node 
 
     if(node->mesh)
     {
+        if(node->mesh->primitives_count > 0)
+        {
+            modelNode->primitive = PushArray(arena, node->mesh->primitives_count, gltf_primitive);
+        }
         for(cgltf_size i = 0; i < node->mesh->primitives_count; ++i)
         {
-            modelNode->primitive = PushStruct(arena, gltf_primitive);
-            ProcessPrimitives(model, arena, &node->mesh->primitives[i], modelNode->primitive);
+            ProcessPrimitives(model, arena, &node->mesh->primitives[i], &modelNode->primitive[i]);
         }
     }
 
-    gltf_node *currChild = model->root;
+    modelNode->childCount = node->children_count;
+    if(node->children_count > 0)
+    {
+        modelNode->children = PushArray(arena, node->children_count, gltf_node*);
+    }
     for(cgltf_size i = 0; i < node->children_count; ++i)
     {
-        ProcessNode(model, arena, node->children[i], currChild);
-        currChild = PushStruct(arena, gltf_node);
-        currChild = currChild->child;
-        currChild->parent = currChild;
+        modelNode->children[i] = PushStruct(arena, gltf_node);
+        modelNode->children[i]->parent = modelNode;
+
+        ProcessNode(model, arena, node->children[i], modelNode->children[i]);
     }
 }
 
@@ -325,22 +304,24 @@ LoadModel(gltf_model *model, memory_arena *arena, char *path)
 
     if (cgltf_load_buffers(&options, data, path) != cgltf_result_success)
     {
-        ThrowError("Failed to load GLTF Buffers");
+       ThrowError("Failed to load GLTF Buffers");
     }
 
     cgltf_scene *scene = data->scene;
 
     model->textures = PushStruct(arena, gltf_texture);
     model->root = PushStruct(arena, gltf_node);
+    model->root->transform = glm::mat4(1.0f);
     model->root->parent = 0;
 
-    gltf_node *currChild = model->root;
+    model->root->children = PushArray(arena, scene->nodes_count, gltf_node*);
+    model->nodeCount = scene->nodes_count;
     for(cgltf_size i = 0; i < scene->nodes_count; ++i)
     {
-        ProcessNode(model, arena, scene->nodes[i], currChild);
-        currChild->child = PushStruct(arena, gltf_node);
-        currChild = currChild->child;
-        currChild->parent = currChild;
+        model->root->children[i] = PushStruct(arena, gltf_node);
+        model->root->children[i]->parent = model->root;
+
+        ProcessNode(model, arena, scene->nodes[i], model->root->children[i]);
     }
 
     cgltf_free(data);
@@ -349,10 +330,12 @@ LoadModel(gltf_model *model, memory_arena *arena, char *path)
 internal void
 DrawModel(gltf_model *model, i32 shader)
 {
-    gltf_node *node = model->root->child;
-    while(node->primitive)
+    for(size_t parent = 0; parent < model->nodeCount; ++parent)
     {
-        DrawNode(node, model->textures, model->nTextures, shader);
-        node = node->child;
+        gltf_node *node = model->root->children[parent];
+        for(size_t child = 0; child <= node->childCount; ++child)
+        {
+            DrawNode(&node[child], model->textures, model->nTextures, shader);
+        }
     }
 }

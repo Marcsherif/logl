@@ -19,6 +19,7 @@ struct my_camera
     f32 speed;
     f32 sensitivity;
     f32 fov;
+    f32 zoom;
 
     camOptions options;
 };

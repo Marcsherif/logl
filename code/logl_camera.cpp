@@ -13,6 +13,7 @@ ProcessCameraInputs(my_camera *cam, game_controller_input *input, f32 deltaTime)
     if(input->moveLeft.endedDown)
     {
         cam->position -= glm::normalize(glm::cross(cam->front, cam->up)) * cam->speed;
+//        Log("Position: %s\n", glm::to_string(cam->position).c_str());
     }
 
     if(input->moveRight.endedDown)
@@ -23,6 +24,7 @@ ProcessCameraInputs(my_camera *cam, game_controller_input *input, f32 deltaTime)
     if(input->moveForward.endedDown)
     {
         cam->position += cam->speed * cam->front;
+//        Log("Position: %s\n", glm::to_string(cam->position).c_str());
     }
 
     if(input->moveBackward.endedDown)
@@ -30,18 +32,28 @@ ProcessCameraInputs(my_camera *cam, game_controller_input *input, f32 deltaTime)
         cam->position -= cam->speed * cam->front;
     }
 
-    if(input->zoomin.endedDown)
+    if(input->fovIn.endedDown)
     {
         cam->fov -= 30;
         if(cam->fov < 1.0f)
         cam->fov = 1.0f;
     }
 
-    if(input->zoomout.endedDown)
+    if(input->fovOut.endedDown)
     {
         cam->fov += 30;
         if(cam->fov > FOV_MAX)
             cam->fov = FOV_MAX;
+    }
+
+    if(input->zoomIn.endedDown)
+    {
+        cam->zoom -= 30;
+    }
+
+    if(input->zoomOut.endedDown)
+    {
+        cam->zoom += 30;
     }
 }
 
@@ -148,7 +160,7 @@ MYDEBUGGetViewMatrix(my_camera *camera)
 
     glm::mat4 pos = glm::mat4(1.0f);
     pos[3][0] = -eye.x;
-    pos[3][1] = -eye.y;
+    pos[3][1] = -eye.y-camera->zoom;
     pos[3][2] = -eye.z;
 
     view = view * pos;
@@ -171,6 +183,7 @@ InitCamera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm:
     myCam.speed = CAMSPEED;
     myCam.sensitivity = SENSITIVITY;
     myCam.fov = FOV;
+    myCam.zoom = 0;
 
     myCam.options = options;
 

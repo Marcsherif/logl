@@ -39,5 +39,11 @@ PushSize_(memory_arena *Arena, memory_index Size)
 #include "logl_camera.h"
 #include "logl_gltf.h"
 
+enum game_state
+{
+    DEBUG,
+    PLAY,
+};
+
 #define LOGL_H
 #endif

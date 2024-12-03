@@ -4,6 +4,7 @@
 #endif
 
 #include <SDL3/SDL.h>
+#define IMGUI_IMPL_OPENGL_LOADER_CUSTOM
 #include <glad/glad.h>
 #include <glad/glad.c>
 
@@ -11,13 +12,25 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/string_cast.hpp>
+
+
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image/stb_image.h>
 
 #define CGLTF_IMPLEMENTATION
 #include <cgltf/cgltf.h>
 
-#include "logl.h"
+#include <imgui/imgui.cpp>
+#include <imgui/imgui_tables.cpp>
+#include <imgui/imgui_widgets.cpp>
+#include <imgui/imgui_draw.cpp>
+#include <imgui/imgui_demo.cpp>
+#include <imgui/backends/imgui_impl_opengl3.cpp>
+#include <imgui/backends/imgui_impl_sdl3.cpp>
+
+#include "Logl.h"
 
 void Quit(SDL_Window *window);
 #define err(msg) Quit(window); ThrowError(msg);
@@ -44,6 +57,12 @@ struct VABO
 
     u32 *EBO;
     u32 nEBO;
+
+    // TODO: turn these into arrays when needed
+    u32 NUM_STRIPS;
+    u32 NUM_VERTS_PER_STRIP;
+    // TODO: get rid of this
+    u32 rez;
 };
 
 void PaintMyWindow()
@@ -111,7 +130,7 @@ ProcessInput(my_window *myWindow, game_controller_input *keyboard, SDL_GLContext
 
         if(key[SDL_SCANCODE_ESCAPE])
         {
-            log("ESCAPE PRESSED");
+            Log("ESCAPE PRESSED");
             globalQuit = true;
             Quit(myWindow->window);
         }
@@ -146,14 +165,29 @@ ProcessInput(my_window *myWindow, game_controller_input *keyboard, SDL_GLContext
             alpha += 0.1;
         }
 
+        if(key[SDL_SCANCODE_C])
+        {
+            ProcessKeyboardMessage(&keyboard->fovIn, isDown);
+        }
+
+        if(key[SDL_SCANCODE_V])
+        {
+            ProcessKeyboardMessage(&keyboard->fovOut, isDown);
+        }
+
         if(key[SDL_SCANCODE_Z])
         {
-            ProcessKeyboardMessage(&keyboard->zoomin, isDown);
+            ProcessKeyboardMessage(&keyboard->zoomIn, isDown);
         }
 
         if(key[SDL_SCANCODE_X])
         {
-            ProcessKeyboardMessage(&keyboard->zoomout, isDown);
+            ProcessKeyboardMessage(&keyboard->zoomOut, isDown);
+        }
+
+        if(key[SDL_SCANCODE_F2])
+        {
+            ProcessKeyboardMessage(&keyboard->debug, isDown);
         }
     }
 }
@@ -176,7 +210,7 @@ void HandleEvent(my_window *myWindow, SDL_Event e, my_camera camera)
         case SDL_EVENT_WINDOW_MOUSE_ENTER:
             myWindow->mouseFocus = true;
             myWindow->updateCaption = true;
-            log("mouse focused!");
+            Log("mouse focused!");
             break;
 
         case SDL_EVENT_WINDOW_MOUSE_LEAVE:
@@ -249,6 +283,17 @@ u32 GetVAOwithoutEBO(VABO *vabo, f32 *vertices, u32 nVerts)
 
     return vaoIndex;
 }
+
+f32 globalGround[] = {
+    // positions          // normals           // texture coords
+    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
+     0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 0.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f,
+
+};
 
 f32 cubeVertices[] = {
     // positions          // normals           // texture coords
@@ -378,11 +423,168 @@ u32 GetTexture(char *texturePath, u32 wrappingMethod)
     }
     else
     {
-        log("[Texture] Failed to load texture %s", texturePath);
+        Log("[Texture] Failed to load texture %s", texturePath);
         stbi_image_free(data);
     }
 
     return texture;
+}
+
+u32 GenerateHeightMap(VABO *vabo, memory_arena *arena, char *heightMapPath, u32 *texture, u32 wrappingMethod)
+{
+    u32 vaoIndex = 0;
+
+    i32 imageWidth, imageHeight, nrChannels;
+
+    glGenTextures(1, texture);
+    glBindTexture(GL_TEXTURE_2D, *texture);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrappingMethod);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrappingMethod);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    u8 *data = stbi_load(heightMapPath, &imageWidth, &imageHeight, &nrChannels, 0);
+    stbi_set_flip_vertically_on_load(true);
+    if(data)
+    {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, imageWidth, imageHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+        //glGenerateMipmap(GL_TEXTURE_2D);
+        stbi_image_free(data);
+
+        glPatchParameteri(GL_PATCH_VERTICES, 4);
+
+        vabo->rez = 20;
+        u32 nVerts = 20*vabo->rez*vabo->rez;
+
+        GLfloat *vertices = PushArray(arena, nVerts, GLfloat);
+        GLfloat *verticesPtr = vertices;
+
+        for(u32 i = 0; i <= vabo->rez-1; ++i)
+        {
+            for(u32 j = 0; j <= vabo->rez-1; ++j)
+            {
+                *verticesPtr++ = -imageWidth/2.0f + imageWidth*i/(float)vabo->rez; // v.x
+                *verticesPtr++ = 0.0f; // v.y
+                *verticesPtr++ = -imageHeight/2.0f + imageHeight*j/(float)vabo->rez; // v.z
+                *verticesPtr++ = i / (float)vabo->rez; // u
+                *verticesPtr++ = j / (float)vabo->rez; // v
+
+                *verticesPtr++ = -imageWidth/2.0f + imageWidth*(i+1)/(float)vabo->rez; // v.x
+                *verticesPtr++ = 0.0f; // v.y
+                *verticesPtr++ = -imageHeight/2.0f + imageHeight*j/(float)vabo->rez; // v.z
+                *verticesPtr++ = (i+1) / (float)vabo->rez; // u
+                *verticesPtr++ = j / (float)vabo->rez; // v
+
+                *verticesPtr++ = -imageWidth/2.0f + imageWidth*i/(float)vabo->rez; // v.x
+                *verticesPtr++ = 0.0f; // v.y
+                *verticesPtr++ = -imageHeight/2.0f + imageHeight*(j+1)/(float)vabo->rez; // v.z
+                *verticesPtr++ = i / (float)vabo->rez; // u
+                *verticesPtr++ = (j+1) / (float)vabo->rez; // v
+
+                *verticesPtr++ = -imageWidth/2.0f + imageWidth*(i+1)/(float)vabo->rez; // v.x
+                *verticesPtr++ = 0.0f; // v.y
+                *verticesPtr++ = -imageHeight/2.0f + imageHeight*(j+1)/(float)vabo->rez; // v.z
+                *verticesPtr++ = (i+1) / (float)vabo->rez; // u
+                *verticesPtr++ = (j+1) / (float)vabo->rez; // v
+            }
+        }
+
+        vaoIndex = vabo->nVAO;
+        vabo->count[vabo->nVAO] = nVerts;
+
+        glGenVertexArrays(1, &vabo->VAO[vabo->nVAO]);
+        glGenBuffers(1, &vabo->VBO[vabo->nVBO]);
+
+        glBindBuffer(GL_ARRAY_BUFFER, vabo->VBO[vabo->nVBO++]);
+        glBufferData(GL_ARRAY_BUFFER, nVerts*sizeof(*vertices + 0), vertices, GL_STATIC_DRAW);
+
+        glBindVertexArray(vabo->VAO[vabo->nVAO++]);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GL_FLOAT), (void*)0);
+        glEnableVertexAttribArray(0);
+
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GL_FLOAT), (void*)(3*sizeof(GL_FLOAT)));
+        glEnableVertexAttribArray(1);
+    }
+    else
+    {
+        Log("[Texture] Failed to load heightMap %s", heightMapPath);
+        stbi_image_free(data);
+    }
+
+
+    return vaoIndex;
+}
+
+u32 GenerateHeightMapCPU(VABO *vabo, memory_arena *arena, char *heightMapPath)
+{
+    u32 vaoIndex = 0;
+    i32 imageWidth, imageHeight, nrChannels;
+    stbi_us *data = stbi_load_16(heightMapPath, &imageWidth, &imageHeight, &nrChannels, 0);
+    if(data)
+    {
+        i32 nVerts = imageWidth * imageHeight * 3;
+        GLfloat *vertices = PushArray(arena, nVerts, GLfloat);
+        GLfloat *verticesPtr = vertices;
+
+        f32 yScale = 100.0f / 65535.0f;
+        f32 yShift = 0.0025f;
+        for(i32 y = 0; y < imageHeight; ++y)
+        {
+            for(i32 x = 0; x < imageWidth; ++x)
+            {
+                stbi_us texel = *(data + ((x + (y * imageWidth)) * nrChannels));
+
+                *verticesPtr++ = -imageWidth / 2.0f + x;
+                *verticesPtr++ = texel * yScale - yShift;
+                *verticesPtr++ = -imageHeight / 2.0f + y;
+            }
+        }
+        stbi_image_free(data);
+
+        i32 nIndices = (imageWidth * 2) * (imageHeight-1);
+        u32 *indices = PushArray(arena, nIndices, u32);
+        u32 *indicesPtr = indices;
+        for(int y = 0; y < imageHeight-1; y++)
+        {
+            for(int x = 0; x < imageWidth; x++)
+            {
+                for(int k = 0; k < 2; k++)
+                {
+                    *indicesPtr++ = (x + imageWidth * (y + k));
+                }
+            }
+        }
+
+        vabo->NUM_STRIPS = imageHeight - 1;
+        vabo->NUM_VERTS_PER_STRIP = imageWidth * 2;
+
+        vaoIndex = vabo->nVAO;
+        vabo->count[vaoIndex] = nIndices;
+
+        glGenVertexArrays(1, &vabo->VAO[vabo->nVAO]);
+        glBindVertexArray(vabo->VAO[vabo->nVAO++]);
+
+        glGenBuffers(1, &vabo->VBO[vabo->nVBO]);
+        glBindBuffer(GL_ARRAY_BUFFER, vabo->VBO[vabo->nVBO++]);
+        glBufferData(GL_ARRAY_BUFFER, nVerts*sizeof(vertices[0]), vertices, GL_STATIC_DRAW);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GL_FLOAT), (void*)0);
+        glEnableVertexAttribArray(0);
+
+        glGenBuffers(1, &vabo->EBO[vabo->nEBO]);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vabo->EBO[vabo->nEBO++]);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, nIndices*sizeof(indices[0]), indices, GL_STATIC_DRAW);
+    }
+    else
+    {
+        Log("[Texture] Failed to load heightMap %s", heightMapPath);
+        stbi_image_free(data);
+    }
+
+    return vaoIndex;
 }
 
 f32 GetAlphaBlend(f32 frequency)
@@ -412,7 +614,8 @@ int main()
                                           SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
     SDL_GLContext context = 0;
 
-    u64 memorySize = Megabytes(4);
+    //u64 memorySize = Megabytes(4);
+    u64 memorySize = Megabytes(164);
     void *memory = (void *)VirtualAlloc(0, memorySize, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
     memory_arena arena = {};
     InitializeArena(&arena, memorySize, (u8 *)memory);
@@ -425,23 +628,58 @@ int main()
 
     u32 lightShader = 0;
     u32 sourceLightShader = 0;
+    u32 terrainShader = 0;
     if(!window)
     {
         ThrowError("Failed to initialized Window!");
     }
     else
     {
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
+
         context = SDL_GL_CreateContext(window);
         if(!context)
         {
             err("Failed to initialize Context");
         }
+        SDL_GL_SetSwapInterval(1); // Enable vsync
+
+#ifndef LOGL_SLOW
+        // enable debug callback
+        glDebugMessageCallback(&DebugCallback, NULL);
+        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+#endif
+
         SDL_SetWindowRelativeMouseMode(window, 1);
 
         if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress))
         {
             err("Failed to initialize GLAD");
         }
+
+        // Setup Dear ImGui context
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGuiIO& io = ImGui::GetIO(); (void)io;
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+        // Setup Dear ImGui style
+        ImGui::StyleColorsDark();
+        //ImGui::StyleColorsLight();
+
+        const char *glsl_version = "#version 410";
+        // Setup Platform/Renderer backends
+        ImGui_ImplSDL3_InitForOpenGL(window, context);
+        ImGui_ImplOpenGL3_Init(glsl_version);
+
+        bool show_demo_window = true;
+        bool show_another_window = false;
+        ImVec4 clear_color = ImVec4(0.18f, 0.18f, 0.18f, 1.00f);
+        ImVec4 shader_color = ImVec4(0.18f, 0.18f, 0.18f, 1.00f);
 
         game_input input[2] {};
         game_input *newInput = &input[0];
@@ -460,9 +698,23 @@ int main()
         fragShaderPath = "../shaders/lightSource.fs";
         sourceLightShader = Shader(window, vertShaderPath, fragShaderPath);
 
+        vertShaderPath = "../shaders/terrain.vs";
+        fragShaderPath = "../shaders/terrain.fs";
+        char *tcsShaderPath = "../shaders/terrain.tcs";
+        char *tesShaderPath = "../shaders/terrain.tes";
+        terrainShader = Shader(window, vertShaderPath, fragShaderPath, tcsShaderPath, tesShaderPath);
+
         u32 nSquareVerts = ArrayCount(cubeVertices);
         u32 cube = GetVAOwithoutEBO(&vabo, cubeVertices, nSquareVerts);
         u32 lightSourceCube = GetVAOwithoutEBO(&vabo, cubeVertices, nSquareVerts);
+
+        u32 nground = ArrayCount(globalGround);
+        u32 ground = GetVAOwithoutEBO(&vabo, globalGround, nground);
+
+//        u32 terrain = GenerateHeightMapCPU(&vabo, &arena, "../data/iceland_heightmap.png");
+        u32 terrainTexture = 0;
+        u32 terrain = GenerateHeightMap(&vabo, &arena, "../data/iceland_heightmap.png", &terrainTexture, GL_MIRRORED_REPEAT);
+
         glEnable(GL_DEPTH_TEST);
 
         glm::mat4 projection;
@@ -474,8 +726,10 @@ int main()
 
         i32 nrAttributes;
         glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nrAttributes);
-        log("Maximum nr of vertex attributes supported: %d\n", nrAttributes);
+        Log("Maximum nr of vertex attributes supported: %d\n", nrAttributes);
 
+        f32 scale = 64;
+        f32 shift = 16;
         my_window myWindow;
         myWindow.window = window;
         SDL_Event e;
@@ -487,6 +741,7 @@ int main()
         f32 lastMouseX = width/2;
         f32 lastMouseY = height/2;
         i32 movement = 0;
+        game_state gameState = PLAY;
         while(!globalQuit)
         {
             newInput->dtForFrame = (f32)MCPF;
@@ -505,12 +760,64 @@ int main()
 
             while(SDL_PollEvent(&e))
             {
+                ImGui_ImplSDL3_ProcessEvent(&e);
                 ProcessInput(&myWindow, newKeyboard, context, e);
                 HandleEvent(&myWindow, e, debugCamera);
             }
 
-            //log("A BUTTON : %d", newKeyboard->moveLeft.endedDown);
-            ProcessCameraInputs(&debugCamera, newKeyboard, newInput->dtForFrame);
+            if(newKeyboard->debug.endedDown && gameState != DEBUG)
+            {
+                gameState = DEBUG;
+            }
+            else if(newKeyboard->debug.endedDown && gameState != PLAY)
+            {
+                gameState = PLAY;
+            }
+
+            ImGui_ImplOpenGL3_NewFrame();
+            ImGui_ImplSDL3_NewFrame();
+            ImGui::NewFrame();
+
+            // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
+            if (show_demo_window)
+                ImGui::ShowDemoWindow(&show_demo_window);
+
+            // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
+            {
+                static float f = 0.0f;
+                static int counter = 0;
+
+                ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
+
+                ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
+                ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
+                ImGui::Checkbox("Another Window", &show_another_window);
+
+                ImGui::SliderFloat("scale", &scale, 0.0f, 1000.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+                ImGui::SliderFloat("shift", &shift, 0.0f, 1000.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+                ImGui::ColorEdit3("shader color", (float*)&shader_color); // Edit 3 floats representing a color
+                ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
+
+                if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
+                    counter++;
+                ImGui::SameLine();
+                ImGui::Text("counter = %d", counter);
+
+                ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+                ImGui::End();
+            }
+
+            // 3. Show another simple window.
+            if (show_another_window)
+            {
+                ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+                ImGui::Text("Hello from another window!");
+                if (ImGui::Button("Close Me"))
+                    show_another_window = false;
+                ImGui::End();
+            }
+
+            //Log("A BUTTON : %d", newKeyboard->moveLeft.endedDown);
 
             f32 mousePosX, mousePosY;
             SDL_GetMouseState(&mousePosX, &mousePosY);
@@ -533,7 +840,7 @@ int main()
             if(!myWindow.minimized)
             {
 
-                glClearColor(0x18 / 255.0f, 0x18 / 255.0f, 0x18 / 255.0f, 0xFF);
+                glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
                 f32 timeValue = GetSecondsElapsed(upTime, frequency);
@@ -560,11 +867,23 @@ int main()
                 SetUniform(lightShader, "spotLight.cutOff", (f32)glm::cos(glm::radians(12.5)));
                 SetUniform(lightShader, "spotLight.outerCutOff", (f32)glm::cos(glm::radians(15.0)));
 
-                // TODO(marc): behaves weird around corners/diagonal movements.
-                GetCameraDirection(&myWindow, newInput, &debugCamera, &lastMouseX, &lastMouseY);
+                switch(gameState)
+                {
+                    case DEBUG:
+                    {
+                        SDL_SetWindowRelativeMouseMode(window, 0);
+                    } break;
 
-                projection = glm::perspective(glm::radians(debugCamera.fov), f32(width / height), 0.1f, 100.0f);
-                glm::mat4 view = GetViewMatrix(&debugCamera);
+                    case PLAY:
+                    {
+                        SDL_SetWindowRelativeMouseMode(window, 1);
+                        // TODO(marc): behaves weird around corners/diagonal movements.
+                        GetCameraDirection(&myWindow, newInput, &debugCamera, &lastMouseX, &lastMouseY);
+                    } break;
+                }
+                ProcessCameraInputs(&debugCamera, newKeyboard, newInput->dtForFrame);
+                projection = glm::perspective(glm::radians(debugCamera.fov), f32(width / height), 0.1f, 1000.0f);
+                glm::mat4 view = MYDEBUGGetViewMatrix(&debugCamera);
                 SetUniform(lightShader, "projection", projection);
                 SetUniform(lightShader, "view", view);
 
@@ -623,6 +942,62 @@ int main()
                     glDrawArrays(GL_TRIANGLES, 0, vabo.count[lightSourceCube]);
                 }
 
+#if 0
+                glBindVertexArray(vabo.VAO[ground]);
+
+                lightColor.x = 1.4f;
+                lightColor.y = 1.7f;
+                lightColor.z = 1.1f;
+
+                SetUniform(sourceLightShader, "color", lightColor);
+
+                model = glm::mat4(1.0f);
+                model = glm::translate(model, glm::vec3(0, -2, 0));
+                model = glm::scale(model, glm::vec3(20.0f));
+
+                SetUniform(sourceLightShader, "model", model);
+                glDrawArrays(GL_TRIANGLES, 0, vabo.count[ground]);
+#endif
+
+                UseShader(terrainShader);
+
+                SetUniform(terrainShader, "heightMap", 0);
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, terrainTexture);
+
+                model = glm::mat4(1.0f);
+                model = glm::translate(model, glm::vec3(0, -10, 0));
+                model = glm::scale(model, glm::vec3(0.2));
+
+                SetUniform(terrainShader, "view", view);
+                SetUniform(terrainShader, "projection", projection);
+                SetUniform(terrainShader, "model", model);
+
+                SetUniform(terrainShader, "scale", scale);
+                SetUniform(terrainShader, "shift", shift);
+
+                SetUniform(terrainShader, "shaderR", shader_color.x*shader_color.w);
+                SetUniform(terrainShader, "shaderG", shader_color.y*shader_color.w);
+                SetUniform(terrainShader, "shaderB", shader_color.z*shader_color.w);
+
+                glBindVertexArray(vabo.VAO[terrain]);
+                glDrawArrays(GL_PATCHES, 0, 20*vabo.rez*vabo.rez);
+#if 0
+                for(u32 strip = 0; strip < vabo.NUM_STRIPS; ++strip)
+                {
+                    glDrawElements(GL_TRIANGLE_STRIP,
+                                   vabo.NUM_VERTS_PER_STRIP,
+                                   GL_UNSIGNED_INT,
+                                   (void*)(sizeof(u32) *
+                                    vabo.NUM_VERTS_PER_STRIP *
+                                    strip));
+                }
+#endif
+
+
+                ImGui::Render();
+                ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
                 SDL_GL_SwapWindow(window);
 
                 // TODO: track fps
@@ -634,7 +1009,7 @@ int main()
 #if 1
                 FPS = 1.0f/MCPF;
 
-                //log("%.02ff/s,  %.02fmc/f\n", FPS, MCPF);
+                //Log("%.02ff/s,  %.02fmc/f\n", FPS, MCPF);
 #endif
             }
         }
@@ -646,6 +1021,10 @@ int main()
     glDeleteBuffers(vabo.nVBO, vabo.VBO);
     glDeleteProgram(lightShader);
     glDeleteProgram(sourceLightShader);
+
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplSDL3_Shutdown();
+    ImGui::DestroyContext();
 
     Quit(window);
     return 0;

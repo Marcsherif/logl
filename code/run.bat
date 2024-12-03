@@ -1,5 +1,5 @@
 @echo off
 
 pushd build
-call logl_main.exe
+call LOGL.exe
 popd

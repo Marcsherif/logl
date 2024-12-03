@@ -36,12 +36,14 @@ struct gltf_node
 
     glm::mat4 transform;
     gltf_node *parent;
-    gltf_node *child;
+    gltf_node **children;
+    size_t childCount;
 };
 
 struct gltf_model
 {
     gltf_node *root;
+    size_t nodeCount;
 
     gltf_texture *textures;
     u32 nTextures;

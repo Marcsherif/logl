@@ -24,7 +24,7 @@ typedef double f64;
 #define global_variable static
 
 #ifdef LOGL_SLOW
-#define Assert(cond) if(!(cond)) {*(int *)0 = 0;}
+#define Assert(cond) do { if (!(cond)) __debugbreak(); } while (0)
 #else
 #define Assert(cond)
 #endif
@@ -51,10 +51,10 @@ SafeTruncateUInt64(u64 Value)
 void ThrowError(const char *message)
 {
     MessageBoxA(nullptr, message, "LOGL ERROR", MB_OK | MB_ICONERROR);
-    __debugbreak();
+    ExitProcess(0);
 }
 
-void log(const char* msg, ...)
+void Log(const char* msg, ...)
 {
     char buf[4096];
     va_list vl;
@@ -64,6 +64,24 @@ void log(const char* msg, ...)
     va_end(vl);
     printf("%s\n", buf);
 }
+
+#ifdef LOGL_SLOW
+static void APIENTRY DebugCallback(
+    GLenum source, GLenum type, GLuint id, GLenum severity,
+    GLsizei length, const GLchar* message, const void* user)
+{
+    OutputDebugStringA(message);
+    OutputDebugStringA("\n");
+    if (severity == GL_DEBUG_SEVERITY_HIGH || severity == GL_DEBUG_SEVERITY_MEDIUM)
+    {
+        if (IsDebuggerPresent())
+        {
+            Assert(!"OpenGL error - check the callstack in debugger");
+        }
+        ThrowError("OpenGL API usage error! Use debugger to examine call stack!");
+    }
+}
+#endif
 
 /*
  NOTE(marc): Services that the game provides to the platform layer.
@@ -85,7 +103,7 @@ struct game_controller_input
 
     union
     {
-        game_button_state buttons[6];
+        game_button_state buttons[9];
         struct
         {
             game_button_state moveLeft;
@@ -93,8 +111,13 @@ struct game_controller_input
             game_button_state moveForward;
             game_button_state moveBackward;
 
-            game_button_state zoomin;
-            game_button_state zoomout;
+            game_button_state fovIn;
+            game_button_state fovOut;
+
+            game_button_state zoomIn;
+            game_button_state zoomOut;
+
+            game_button_state debug;
 
             //
 
