@@ -1,5 +1,9 @@
 @echo off
 
+if not defined VSINSTALLDIR (
+    call "c:\program files\microsoft visual studio\2022\community\vc\auxiliary\build\vcvarsall.bat" x64
+)
+
 set rootDir=%cd%
 
 set compilerFlags= -MTd -nologo -fp:fast -Gm- -GR- -EHa- -Od -Oi -WX -W4 -wd4201 -wd4100 -wd4189 -wd4505 -DLOGL_INTERNAL=1 -DLOGL_SLOW=1 -DLOGL_ROOT=1 -DLOGL_WIN32=1 -D_CRT_SECURE_NO_WARNINGS -FC -Z7
@@ -8,7 +12,7 @@ set includeDirs= /I %rootDir%\ext\sdl3\include /I %rootDir%\ext\glad\include /I 
 
 set linkDirs= /LIBPATH:%rootDir%/ext/sdl3/lib/ /LIBPATH:%rootDir%/ext/glad/src
 
-set linkerFlags= user32.lib gdi32.lib winmm.lib SDL3.lib opengl32.lib
+set linkerFlags= -incremental:no -opt:ref user32.lib gdi32.lib winmm.lib SDL3.lib opengl32.lib
 
 IF NOT EXIST .\build mkdir .\build
 pushd .\build

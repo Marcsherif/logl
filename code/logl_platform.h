@@ -31,10 +31,10 @@ typedef double f64;
 
 #define InvalidCodePath Assert(!"InvalidCodePath");
 
-#define Kilobytes(Value) ((Value)*1024LL)
-#define Megabytes(Value) (Kilobytes(Value)*1024LL)
-#define Gigabytes(Value) (Megabytes(Value)*1024LL)
-#define Terabytes(Value) (Gigabytes(Value)*1024LL)
+#define kilobytes(Value) ((Value)*1024LL)
+#define megabytes(Value) (kilobytes(Value)*1024LL)
+#define gigabytes(Value) (megabytes(Value)*1024LL)
+#define terabytes(Value) (gigabytes(Value)*1024LL)
 
 #define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
 
@@ -103,13 +103,15 @@ struct game_controller_input
 
     union
     {
-        game_button_state buttons[9];
+        game_button_state buttons[10];
         struct
         {
             game_button_state moveLeft;
             game_button_state moveRight;
             game_button_state moveForward;
             game_button_state moveBackward;
+
+            game_button_state speedUp;
 
             game_button_state fovIn;
             game_button_state fovOut;
@@ -121,7 +123,7 @@ struct game_controller_input
 
             //
 
-            game_button_state Terminator;
+            game_button_state terminator;
         };
     };
 };
@@ -132,17 +134,36 @@ struct game_input
     game_button_state mouseButtons[5];
     f32 mouseX, mouseY, mouseZ;
 
-    f32 dtForFrame;
+    f32 dt;
+    u64 uptime;
+    u64 frequency;
+    f32 last_mouse_x;
+    f32 last_mouse_y;
 
     game_controller_input controllers[5];
 };
 
-inline game_controller_input *GetController(game_input *input, int unsigned controllerIndex)
+inline game_controller_input *GetController(game_input *input, int unsigned controller_index)
 {
-    Assert(controllerIndex < ArrayCount(input->controllers));
-    game_controller_input *result = &input->controllers[controllerIndex];
+    Assert(controller_index < ArrayCount(input->controllers));
+    game_controller_input *result = &input->controllers[controller_index];
     return(result);
 }
+
+struct game_memory
+{
+    b32 is_initialized;
+
+    u64 permanent_storage_size;
+    void *permanent_storage; // NOTE(marc): Required to be cleared to be zero at startup
+
+    u64 transient_storage_size;
+    void *transient_storage; // NOTE(marc): Required to be cleared to be zero at startup
+
+//    debug_platform_read_entire_file *DEBUGPlatformReadEntireFile;
+//    debug_platform_free_entire_file *DEBUGPlatformFreeEntireFile;
+//    debug_platform_write_entire_file *DEBUGPlatformWriteEntireFile;
+};
 
 #define LOGL_PLATFORM_H
 #endif

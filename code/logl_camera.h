@@ -9,6 +9,7 @@ enum camOptions
 struct my_camera
 {
     glm::vec3 position;
+    glm::vec3 vel;
     glm::vec3 front;
     glm::vec3 up;
     glm::vec3 right;
@@ -20,6 +21,8 @@ struct my_camera
     f32 sensitivity;
     f32 fov;
     f32 zoom;
+
+    glm::mat4 projection;
 
     camOptions options;
 };

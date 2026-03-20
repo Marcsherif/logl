@@ -13,7 +13,7 @@ struct memory_arena
 };
 
 inline void
-InitializeArena(memory_arena *Arena, memory_index Size, void *Base)
+initialize_arena(memory_arena *Arena, memory_index Size, void *Base)
 {
     Arena->Size = Size;
     Arena->Base = (u8 *)Base;
@@ -37,12 +37,24 @@ PushSize_(memory_arena *Arena, memory_index Size)
 #include "logl_main.h"
 #include "logl_shader.h"
 #include "logl_camera.h"
+#include "logl_opengl.h"
 #include "logl_gltf.h"
 
-enum game_state
+enum state
 {
     DEBUG,
     PLAY,
+};
+
+struct Game_State
+{
+    memory_arena world_arena;
+
+    VABO opengl_buffer;
+
+    state state;
+
+    my_camera debug_camera;
 };
 
 #define LOGL_H
