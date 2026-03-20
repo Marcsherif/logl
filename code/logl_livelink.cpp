@@ -90,7 +90,7 @@ UpdateLiveLink(network_state *net, gltf_model *model)
 void SmoothLiveLink(gltf_model *model, float dt) {
     // Higher = Snappier
     // Lower = Softer
-    float lerpSpeed = 10.5f;
+    float lerpSpeed = 0.5f;
     float t = 1.0f - exp(-lerpSpeed * dt);
 
     for(u32 i = 0; i < model->nodeCount; ++i) {
