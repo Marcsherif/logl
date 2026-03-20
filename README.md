@@ -20,6 +20,7 @@ https://github.com/user-attachments/assets/3efb1aa4-6f92-4315-9b88-cb0d955424e1
 
 skeletal animation and maya live link
 
-https://github.com/user-attachments/assets/53e0ac7b-eb17-4fb4-be97-dd4af8911ba9
+
+https://github.com/user-attachments/assets/9140ea49-20b3-4606-8f1b-cfa04e0f4f40
 
 
