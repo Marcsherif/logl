@@ -3,7 +3,7 @@
 
 layout (quads, fractional_odd_spacing, ccw) in;
 
-uniform sampler2D heightMap;
+uniform sampler2D height_map;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
@@ -11,12 +11,12 @@ uniform float scale;
 uniform float shift;
 
 // received from Tessellation Control Shader - all texture coordinates for the patch vertices
-in vec2 TextureCoord[];
+in vec2 texture_coord[];
 
 // send to Fragment Shader for coloring
-out float Height;
-out vec3 FragPos;
-out vec2 TexCoords;
+out float height;
+out vec3 frag_pos;
+out vec2 tex_coords;
 
 void main()
 {
@@ -26,19 +26,19 @@ void main()
 
     // ----------------------------------------------------------------------
     // retrieve control point texture coordinates
-    vec2 t00 = TextureCoord[0];
-    vec2 t01 = TextureCoord[1];
-    vec2 t10 = TextureCoord[2];
-    vec2 t11 = TextureCoord[3];
+    vec2 t00 = texture_coord[0];
+    vec2 t01 = texture_coord[1];
+    vec2 t10 = texture_coord[2];
+    vec2 t11 = texture_coord[3];
 
     // bilinearly interpolate texture coordinate across patch
     vec2 t0 = (t01 - t00) * u + t00;
     vec2 t1 = (t11 - t10) * u + t10;
-    vec2 texCoord = (t1 - t0) * v + t0;
-    TexCoords = texCoord;
+    vec2 tex_coord = (t1 - t0) * v + t0;
+    tex_coords = tex_coord;
 
     // lookup texel at patch coordinate for height and scale + shift as desired
-    Height = texture(heightMap, texCoord).y * scale - shift;
+    height = texture(height_map, tex_coord).y * scale - shift;
 
     // ----------------------------------------------------------------------
     // retrieve control point position coordinates
@@ -62,8 +62,8 @@ void main()
     // displace point along normal
     //p += normal * Height;
 
-    p.y = Height;
-    vec3 FragPos = vec3(model* p);
+    p.y = height;
+    frag_pos = vec3(model * p);
 
     // ----------------------------------------------------------------------
     // output patch point position in clip space

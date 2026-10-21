@@ -1,12 +1,12 @@
 #if !defined(LOGL_CAMERA_H)
 
-enum camOptions
+enum Camera_Mode
 {
-    camDEBUG = 0,
-    camFPS = 1,
+    camera_debug = 0,
+    camera_fps = 1,
 };
 
-struct my_camera
+struct Camera
 {
     glm::vec3 position;
     glm::vec3 vel;
@@ -24,7 +24,7 @@ struct my_camera
 
     glm::mat4 projection;
 
-    camOptions options;
+    Camera_Mode options;
 };
 
 #define LOGL_CAMERA_H

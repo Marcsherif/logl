@@ -1,9 +1,9 @@
 #version 330 core
-out vec4 FragColor;
+out vec4 frag_color;
 
-in vec2 TexCoords;
+in vec2 tex_coords;
 
-uniform vec3 viewPos;
+uniform vec3 view_pos;
 
 struct Material {
     sampler2D diffuse1;
@@ -14,5 +14,5 @@ uniform Material material;
 
 void main()
 {
-    FragColor = texture(material.diffuse1, TexCoords);
+    frag_color = texture(material.diffuse1, tex_coords);
 }

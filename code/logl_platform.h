@@ -14,7 +14,7 @@ typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
 
-typedef size_t memory_index;
+typedef size_t Memory_Index;
 
 typedef float f32;
 typedef double f64;
@@ -24,37 +24,37 @@ typedef double f64;
 #define global_variable static
 
 #ifdef LOGL_SLOW
-#define Assert(cond) do { if (!(cond)) __debugbreak(); } while (0)
+#define assert_slow(cond) do { if (!(cond)) __debugbreak(); } while (0)
 #else
-#define Assert(cond)
+#define assert_slow(cond)
 #endif
 
-#define InvalidCodePath Assert(!"InvalidCodePath");
+#define invalid_code_path assert_slow(!"InvalidCodePath");
 
-#define kilobytes(Value) ((Value)*1024LL)
-#define megabytes(Value) (kilobytes(Value)*1024LL)
-#define gigabytes(Value) (megabytes(Value)*1024LL)
-#define terabytes(Value) (gigabytes(Value)*1024LL)
+#define kilobytes(value) ((value)*1024LL)
+#define megabytes(value) (kilobytes(value)*1024LL)
+#define gigabytes(value) (megabytes(value)*1024LL)
+#define terabytes(value) (gigabytes(value)*1024LL)
 
-#define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
+#define array_count(array) (sizeof(array) / sizeof((array)[0]))
 
-#define Swap(a, b, t) {t temp = a; a = b; b = temp;}
+#define swap_values(a, b, t) {t temp = a; a = b; b = temp;}
 
 inline u32
-SafeTruncateUInt64(u64 Value)
+safe_truncate_u64(u64 value)
 {
-    Assert(Value <= 0xFFFFFFFF);
-    u32 Result = (u32)Value;
-    return(Result);
+    assert_slow(value <= 0xFFFFFFFF);
+    u32 result = (u32)value;
+    return(result);
 }
 
-void ThrowError(const char *message)
+void throw_error(const char *message)
 {
     MessageBoxA(nullptr, message, "LOGL ERROR", MB_OK | MB_ICONERROR);
     ExitProcess(0);
 }
 
-void Log(const char* msg, ...)
+void log_message(const char* msg, ...)
 {
     char buf[4096];
     va_list vl;
@@ -66,7 +66,7 @@ void Log(const char* msg, ...)
 }
 
 #ifdef LOGL_SLOW
-static void APIENTRY DebugCallback(
+static void APIENTRY debug_callback(
     GLenum source, GLenum type, GLuint id, GLenum severity,
     GLsizei length, const GLchar* message, const void* user)
 {
@@ -76,9 +76,9 @@ static void APIENTRY DebugCallback(
     {
         if (IsDebuggerPresent())
         {
-            Assert(!"OpenGL error - check the callstack in debugger");
+            assert_slow(!"OpenGL error - check the callstack in debugger");
         }
-        ThrowError("OpenGL API usage error! Use debugger to examine call stack!");
+        throw_error("OpenGL API usage error! Use debugger to examine call stack!");
     }
 }
 #endif
@@ -88,51 +88,83 @@ static void APIENTRY DebugCallback(
  (this may expand in the future - sound on seperate thread, etc.)
 */
 
-struct game_button_state
+struct SDL_Window;
+
+struct Window
 {
-    int halfTransitionCount;
-    b32 endedDown;
+    SDL_Window *sdl_window;
+    b32 update_caption = false;
+    i32 width;
+    i32 height;
+    b32 full_screen = false;
+    b32 minimized = false;
+    b32 mouse_focus;
+    b32 keyboard_focus;
 };
 
-struct game_controller_input
+struct Game_Button_State
 {
-    b32 isConnected;
-    b32 isAnalog;
-    f32 stickAverageX;
-    f32 stickAverageY;
+    int half_transition_count;
+    b32 ended_down;
+};
+
+struct Game_Controller_Input
+{
+    b32 is_connected;
+    b32 is_analog;
+    f32 stick_average_x;
+    f32 stick_average_y;
 
     union
     {
-        game_button_state buttons[10];
+        Game_Button_State buttons[10];
         struct
         {
-            game_button_state moveLeft;
-            game_button_state moveRight;
-            game_button_state moveForward;
-            game_button_state moveBackward;
+            Game_Button_State move_left;
+            Game_Button_State move_right;
+            Game_Button_State move_forward;
+            Game_Button_State move_backward;
 
-            game_button_state speedUp;
+            Game_Button_State speed_up;
 
-            game_button_state fovIn;
-            game_button_state fovOut;
+            Game_Button_State fov_in;
+            Game_Button_State fov_out;
 
-            game_button_state zoomIn;
-            game_button_state zoomOut;
+            Game_Button_State zoom_in;
+            Game_Button_State zoom_out;
 
-            game_button_state debug;
+            Game_Button_State debug;
 
             //
 
-            game_button_state terminator;
+            Game_Button_State terminator;
         };
     };
 };
 
-struct game_input
+struct Workbench_Settings
+{
+    glm::vec4 clear_color;
+    glm::vec4 shader_color;
+    f32 scale;
+    f32 shift;
+    bool show_character = true;
+    bool show_terrain = false;
+    bool show_light_markers = false;
+    bool animate_lights = false;
+    bool wireframe = false;
+    bool reset_camera = false;
+    bool show_skeleton = true;
+    bool show_joint_names = false;
+    bool show_weights = false;
+    i32 selected_joint = -1;
+};
+
+struct Game_Input
 {
     // Mouse for debugging
-    game_button_state mouseButtons[5];
-    f32 mouseX, mouseY, mouseZ;
+    Game_Button_State mouse_buttons[5];
+    f32 mouse_x, mouse_y, mouse_z;
 
     f32 dt;
     u64 uptime;
@@ -140,17 +172,17 @@ struct game_input
     f32 last_mouse_x;
     f32 last_mouse_y;
 
-    game_controller_input controllers[5];
+    Game_Controller_Input controllers[5];
 };
 
-inline game_controller_input *GetController(game_input *input, int unsigned controller_index)
+inline Game_Controller_Input *get_controller(Game_Input *input, int unsigned controller_index)
 {
-    Assert(controller_index < ArrayCount(input->controllers));
-    game_controller_input *result = &input->controllers[controller_index];
+    assert_slow(controller_index < array_count(input->controllers));
+    Game_Controller_Input *result = &input->controllers[controller_index];
     return(result);
 }
 
-struct game_memory
+struct Game_Memory
 {
     b32 is_initialized;
 

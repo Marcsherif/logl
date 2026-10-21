@@ -2,17 +2,17 @@
 
 #define MAX_BONE_INFLUENCE 4
 
-struct gltf_vertex
+struct Gltf_Vertex
 {
     glm::vec3 position;
     glm::vec3 normal;
-    glm::vec2 texCoords;
-    glm::ivec4 jointIds; // bone indices that affect this vert
+    glm::vec2 tex_coords;
+    glm::ivec4 joint_ids; // bone indices that affect this vert
     glm::vec4 weights; // weights from each bone
 };
 
 #define TEXTURE_CAPACITY 100
-struct gltf_texture
+struct Gltf_Texture
 {
     u32 id;
     u32 index;
@@ -20,70 +20,77 @@ struct gltf_texture
     char *type;
 };
 
-struct gltf_primitive
+struct Gltf_Primitive
 {
-    gltf_vertex *vertices;
-    u32 nVerts;
+    Gltf_Vertex *vertices;
+    u32 n_verts;
 
     u32 *indices;
-    u32 nIndices;
+    u32 n_indices;
 
-    u32 *textureIndex;
-    u32 nTextures;
+    u32 *texture_index;
+    u32 n_textures;
 
-    u32 VAO;
-    u32 VBO;
-    u32 EBO;
+    u32 vao;
+    u32 vbo;
+    u32 ebo;
 };
 
-struct gltf_node
+struct Gltf_Node
 {
     char name[64];
-    gltf_node *parent;
+    Gltf_Node *parent;
 
     glm::vec3 translation;
     glm::quat rotation;
     glm::vec3 scale;
 
+    // rest pose
+    glm::vec3 rest_translation;
+    glm::quat rest_rotation;
+    glm::vec3 rest_scale;
+    glm::mat4 rest_local_transform;
+
     // live view targets
-    glm::vec3 targetTranslation;
-    glm::quat targetRotation;
+    glm::vec3 target_translation;
+    glm::quat target_rotation;
+    b32 has_live_target;
 
-    b32 useBakedMatrix;
-    glm::mat4 localTransform;
-    glm::mat4 globalTransform;
+    b32 use_baked_matrix;
+    glm::mat4 local_transform;
+    glm::mat4 global_transform;
 
-    gltf_primitive *primitive;
-    u32 nPrimitives;
+    Gltf_Primitive *primitive;
+    u32 n_primitives;
 
-    gltf_node **children;
-    size_t childCount;
+    Gltf_Node **children;
+    size_t child_count;
 };
 
-struct gltf_skin
+struct Gltf_Skin
 {
     char name[64];
-    u32 jointCount;
-    u32 *jointNodeIndices;      // Indices into flat model->nodes array
-    glm::mat4 *inverseBindMatrices;
+    u32 joint_count;
+    u32 *joint_node_indices;      // Indices into flat model->nodes array
+    glm::mat4 *inverse_bind_matrices;
 };
 
-enum interpolation_type
+enum Interpolation_Type
 {
     linear,
     step,
     cubic_spline,
     interpolation_type_max_enum,
 };
-struct gltf_sampler
+struct Gltf_Sampler
 {
     u32 count;
     float* input;     // timestamps
     void* output;      // vec3 or Quat data
-    interpolation_type interpolation;
+    Interpolation_Type interpolation;
 };
 
-enum animation_type
+enum Animation_Type
 {
     invalid,
     translation,
@@ -92,46 +99,49 @@ enum animation_type
     animation_type_max_enum,
 };
 
-struct gltf_channel
+struct Gltf_Channel
 {
-    u32 nodeIndex;
-    gltf_sampler *sampler; // Pointer to the keyframe data
-    animation_type path;   // "translation", "rotation", or "scale"
+    u32 node_index;
+    Gltf_Sampler *sampler; // Pointer to the keyframe data
+    Animation_Type path;   // "translation", "rotation", or "scale"
 };
 
-struct gltf_animation
+struct Gltf_Animation
 {
     char name[64];
     float duration;
-    u32 samplerCount;
-    gltf_sampler *samplers;
-    u32 channelCount;
-    gltf_channel *channels;
+    u32 sampler_count;
+    Gltf_Sampler *samplers;
+    u32 channel_count;
+    Gltf_Channel *channels;
 };
 
-struct gltf_model
+#include <unordered_map>
+#include <string>
+struct Gltf_Model
 {
-    u32 *rootIndices;
-    u32 nRoots;
+    u32 *root_indices;
+    u32 n_roots;
 
-    gltf_node *nodes;
-    size_t nodeCount;
+    Gltf_Node *nodes;
+    size_t node_count;
 
     char path[256];
 
-    gltf_texture *textures;
-    u32 nTextures;
+    Gltf_Texture *textures;
+    u32 n_textures;
 
-    u32 nVerts;
-    u32 nIndices;
+    u32 n_verts;
+    u32 n_indices;
 
-    glm::mat4 finalBonesMatrices[100];
-    gltf_skin *skins;
-    u32 nSkins;
+    glm::mat4 final_bones_matrices[100];
+    Gltf_Skin *skins;
+    u32 n_skins;
 
-    gltf_animation *animations;
-    f32 animationTime;
-    u32 nAnimations;
+    Gltf_Animation *animations;
+    u32 n_animations;
+
+    std::unordered_map<std::string, u32> bone_mapping;
 };
 
 #define LOGL_GLTF_H

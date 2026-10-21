@@ -7,22 +7,22 @@ struct Texture
     i32 width;
 };
 
-struct VABO
+struct Vertex_Buffers
 {
-    u32 *VAO;
-    // NOTE(marc): If using an EBO this is index count else its vertex count
+    u32 *vao;
+    // NOTE(marc): If using an ebo this is index count else its vertex count
     u32 *count;
-    u32 nVAO;
+    u32 n_vao;
 
-    u32 *VBO;
-    u32 nVBO;
+    u32 *vbo;
+    u32 n_vbo;
 
-    u32 *EBO;
-    u32 nEBO;
+    u32 *ebo;
+    u32 n_ebo;
 
     // TODO: turn these into arrays when needed
-    u32 NUM_STRIPS;
-    u32 NUM_VERTS_PER_STRIP;
+    u32 num_strips;
+    u32 num_verts_per_strip;
     // TODO: get rid of this
     u32 rez;
 };

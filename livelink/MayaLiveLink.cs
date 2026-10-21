@@ -8,7 +8,8 @@ namespace LiveLink
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct LiveLinkPacket
     {
-        public int boneIndex;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
+        public string boneName;
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
         public float[] matrix;
     }
@@ -26,14 +27,15 @@ namespace LiveLink
             } catch { return false; }
         }
 
-        public void SendBoneUpdate(int id, byte[] rawMatrixBytes)
+        public void SendBoneUpdate(string boneName, byte[] rawMatrixBytes)
         {
             if (_socket == null || !_socket.Connected || rawMatrixBytes.Length < 64) return;
 
             float[] m = new float[16];
             Buffer.BlockCopy(rawMatrixBytes, 0, m, 0, 64);
 
-            LiveLinkPacket packet = new LiveLinkPacket { boneIndex = id, matrix = m };
+            LiveLinkPacket packet = new LiveLinkPacket
+            { boneName = boneName, matrix = m };
 
             int size = Marshal.SizeOf(packet);
             byte[] buffer = new byte[size];

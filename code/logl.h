@@ -2,59 +2,86 @@
 
 #include "logl_platform.h"
 
-#define Minimum(A, B) ((A < B) ? (A) : (B))
-#define Maximum(A, B) ((A > B) ? (A) : (B))
+#define minimum(a, b) ((a < b) ? (a) : (b))
+#define maximum(a, b) ((a > b) ? (a) : (b))
 
-struct memory_arena
+struct Memory_Arena
 {
-    memory_index Size;
-    u8 *Base;
-    memory_index Used;
+    Memory_Index size;
+    u8 *base;
+    Memory_Index used;
 };
 
 inline void
-initialize_arena(memory_arena *Arena, memory_index Size, void *Base)
+initialize_arena(Memory_Arena *arena, Memory_Index size, void *base)
 {
-    Arena->Size = Size;
-    Arena->Base = (u8 *)Base;
-    Arena->Used = 0;
+    arena->size = size;
+    arena->base = (u8 *)base;
+    arena->used = 0;
 }
 
-#define PushStruct(Arena, type) (type *)PushSize_(Arena, sizeof(type))
-#define PushArray(Arena, Count, type) (type *)PushSize_(Arena, (Count)*sizeof(type))
+#define push_struct(arena, type) (type *)push_size(arena, sizeof(type))
+#define push_array(arena, count, type) (type *)push_size(arena, (count)*sizeof(type))
 inline void *
-PushSize_(memory_arena *Arena, memory_index Size)
+push_size(Memory_Arena *arena, Memory_Index size)
 {
-    if(!((Arena->Used + Size) <= Arena->Size))
+    if(!((arena->used + size) <= arena->size))
     {
-        ThrowError("MemoryArena Overflow!");
+        throw_error("MemoryArena Overflow!");
     }
-    void *Result = Arena->Base + Arena->Used;
-    Arena->Used += Size;
-    return(Result);
+    void *result = arena->base + arena->used;
+    arena->used += size;
+    return(result);
 }
 
-#include "logl_main.h"
-#include "logl_shader.h"
 #include "logl_camera.h"
 #include "logl_opengl.h"
 #include "logl_gltf.h"
+#include "logl_livelink.h"
 
-enum state
+enum App_Mode
 {
-    DEBUG,
-    PLAY,
+    workbench_mode,
+    free_camera_mode,
+};
+
+struct Character_State
+{
+    Gltf_Model model = {};
+    Live_Link_State live_link;
+
+    bool default_pose = false;
+    bool paused = false;
+    bool live_link_enabled = false;
+    bool reset_pose = false;
+    bool seek_animation = false;
+    i32 selected_clip = 0;
+    f32 playback_rate = 1.0f;
+    f32 animation_time = 0.0f;
+    f32 animation_cursor = 0.0f;
 };
 
 struct Game_State
 {
-    memory_arena world_arena;
+    Memory_Arena world_arena;
 
-    VABO opengl_buffer;
+    Vertex_Buffers opengl_buffer;
 
-    state state;
+    App_Mode mode;
 
-    my_camera debug_camera;
+    Camera debug_camera;
+
+    Character_State character;
+    Workbench_Settings dbg_gui;
+    f32 light_time = 0;
+
+    u32 light_shader = 0;
+    u32 source_light_shader = 0;
+    u32 terrain_shader = 0;
+    u32 anim_shader = 0;
+    u32 light_source_cube = 0;
+    u32 terrain = 0;
+    Texture terrain_texture = {};
 };
 
 #define LOGL_H

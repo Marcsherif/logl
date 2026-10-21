@@ -1,115 +1,115 @@
-global_variable const f32 FOV = 90;
-global_variable const f32 FOV_MAX = 180;
-global_variable const f32 CAMSPEED = 5.0f;
-global_variable const f32 SENSITIVITY = 0.1f;
-global_variable const f32 YAW = 0.0f;
-global_variable const f32 PITCH = 0.0f;
+global_variable const f32 camera_fov = 90;
+global_variable const f32 camera_fov_max = 180;
+global_variable const f32 camera_speed = 5.0f;
+global_variable const f32 camera_sensitivity = 0.1f;
+global_variable const f32 camera_yaw = 0.0f;
+global_variable const f32 camera_pitch = 0.0f;
 
 void
-ProcessCameraInputs(my_camera *cam, game_controller_input *input, f32 deltaTime)
+process_camera_inputs(Camera *cam, Game_Controller_Input *input, f32 delta_time)
 {
-    glm::vec3 moveDir(0.0f);
-    cam->speed = CAMSPEED;
+    glm::vec3 move_dir(0.0f);
+    cam->speed = camera_speed;
 
-    if (input->speedUp.endedDown)     cam->speed = CAMSPEED*10;
+    if (input->speed_up.ended_down)     cam->speed = camera_speed*10;
 
-    if(input->moveLeft.endedDown)     moveDir -= glm::normalize(glm::cross(cam->front, cam->up));
-    if(input->moveRight.endedDown)    moveDir += glm::normalize(glm::cross(cam->front, cam->up));
-    if(input->moveForward.endedDown)  moveDir += cam->front;
-    if(input->moveBackward.endedDown) moveDir -= cam->front;
+    if(input->move_left.ended_down)     move_dir -= glm::normalize(glm::cross(cam->front, cam->up));
+    if(input->move_right.ended_down)    move_dir += glm::normalize(glm::cross(cam->front, cam->up));
+    if(input->move_forward.ended_down)  move_dir += cam->front;
+    if(input->move_backward.ended_down) move_dir -= cam->front;
 
-    if (glm::length(moveDir) > 0.0f)
+    if (glm::length(move_dir) > 0.0f)
     {
-        moveDir = glm::normalize(moveDir);
-        cam->vel = moveDir * cam->speed;
+        move_dir = glm::normalize(move_dir);
+        cam->vel = move_dir * cam->speed;
     }
     else
     {
-        cam->vel *= 1.0f / (1.0f + deltaTime * 6.0f);
+        cam->vel *= 1.0f / (1.0f + delta_time * 6.0f);
     }
 
-    cam->position += cam->vel * deltaTime;
+    cam->position += cam->vel * delta_time;
 
-    //if (glm::length(moveDir) > 0.0f)
+    //if (glm::length(move_dir) > 0.0f)
     //{
-    //    moveDir = glm::normalize(moveDir);
+    //    move_dir = glm::normalize(move_dir);
     //}
-    //cam->position += moveDir * CAMSPEED * deltaTime;
+    //cam->position += move_dir * camera_speed * delta_time;
 
-    if(input->fovIn.endedDown)
+    if(input->fov_in.ended_down)
     {
-        cam->fov -= 30;
+        cam->fov -= 2;
         if(cam->fov < 1.0f)
         cam->fov = 1.0f;
     }
 
-    if(input->fovOut.endedDown)
+    if(input->fov_out.ended_down)
     {
-        cam->fov += 30;
-        if(cam->fov > FOV_MAX)
-            cam->fov = FOV_MAX;
+        cam->fov += 2;
+        if(cam->fov > camera_fov_max)
+            cam->fov = camera_fov_max;
     }
 
-    if(input->zoomIn.endedDown)
+    if(input->zoom_in.ended_down)
     {
-        cam->zoom -= 30;
+        cam->zoom -= 2;
     }
 
-    if(input->zoomOut.endedDown)
+    if(input->zoom_out.ended_down)
     {
-        cam->zoom += 30;
+        cam->zoom += 2;
     }
 }
 
 void
-SetCameraDebugDirection(my_window *window, game_input *input, my_camera *cam, f32 *lastMouseX, f32 *lastMouseY)
+set_camera_debug_direction(Window *window, Game_Input *input, Camera *cam, f32 *last_mouse_x, f32 *last_mouse_y)
 {
     f32 width = (f32)window->width;
     f32 height = (f32)window->height;
-    const f32 edgeThreshold = 10.0f;
+    const f32 edge_threshold = 10.0f;
 
-    if(input->mouseX <= edgeThreshold)
+    if(input->mouse_x <= edge_threshold)
     {
-        firstMouse = true;
-        input->mouseX = width-edgeThreshold-1;
-        SDL_WarpMouseInWindow(window->sdl_window, input->mouseX, input->mouseY);
+        first_mouse = true;
+        input->mouse_x = width-edge_threshold-1;
+        SDL_WarpMouseInWindow(window->sdl_window, input->mouse_x, input->mouse_y);
     }
-    if(input->mouseX >= width - edgeThreshold)
+    if(input->mouse_x >= width - edge_threshold)
     {
-        firstMouse = true;
-        input->mouseX = edgeThreshold;
-        SDL_WarpMouseInWindow(window->sdl_window, input->mouseX, input->mouseY);
-    }
-
-    if(input->mouseY <= edgeThreshold)
-    {
-        firstMouse = true;
-        input->mouseY = height-edgeThreshold-1;
-        SDL_WarpMouseInWindow(window->sdl_window, input->mouseX, input->mouseY);
-    }
-    if(input->mouseY >= height-edgeThreshold)
-    {
-        firstMouse = true;
-        input->mouseY = edgeThreshold;
-        SDL_WarpMouseInWindow(window->sdl_window, input->mouseX, input->mouseY);
+        first_mouse = true;
+        input->mouse_x = edge_threshold;
+        SDL_WarpMouseInWindow(window->sdl_window, input->mouse_x, input->mouse_y);
     }
 
-    if (firstMouse)
+    if(input->mouse_y <= edge_threshold)
     {
-        *lastMouseX = input->mouseX;
-        *lastMouseY = input->mouseY;
-        firstMouse = false;
+        first_mouse = true;
+        input->mouse_y = height-edge_threshold-1;
+        SDL_WarpMouseInWindow(window->sdl_window, input->mouse_x, input->mouse_y);
+    }
+    if(input->mouse_y >= height-edge_threshold)
+    {
+        first_mouse = true;
+        input->mouse_y = edge_threshold;
+        SDL_WarpMouseInWindow(window->sdl_window, input->mouse_x, input->mouse_y);
     }
 
-    f32 mouseOffsetX = input->mouseX - *lastMouseX;
-    f32 mouseOffsetY = *lastMouseY - input->mouseY;
-    *lastMouseX = input->mouseX;
-    *lastMouseY = input->mouseY;
-    mouseOffsetX *= cam->sensitivity;
-    mouseOffsetY *= cam->sensitivity;
+    if (first_mouse)
+    {
+        *last_mouse_x = input->mouse_x;
+        *last_mouse_y = input->mouse_y;
+        first_mouse = false;
+    }
 
-    cam->yaw   += mouseOffsetX;
-    cam->pitch += mouseOffsetY;
+    f32 mouse_offset_x = input->mouse_x - *last_mouse_x;
+    f32 mouse_offset_y = *last_mouse_y - input->mouse_y;
+    *last_mouse_x = input->mouse_x;
+    *last_mouse_y = input->mouse_y;
+    mouse_offset_x *= cam->sensitivity;
+    mouse_offset_y *= cam->sensitivity;
+
+    cam->yaw   += mouse_offset_x;
+    cam->pitch += mouse_offset_y;
 
     if(cam->pitch > 89.0f)
         cam->pitch =  89.0f;
@@ -120,7 +120,7 @@ SetCameraDebugDirection(my_window *window, game_input *input, my_camera *cam, f3
     direction.x = cos(glm::radians(cam->yaw)) * cos(glm::radians(cam->pitch));
     direction.y = sin(glm::radians(cam->pitch));
     direction.z = sin(glm::radians(cam->yaw)) * cos(glm::radians(cam->pitch));
-    glm::vec3 camFront = glm::normalize(direction);
+    glm::vec3 cam_front = glm::normalize(direction);
 
     cam->position = direction*cam->zoom;
     cam->up.z = direction.z;
@@ -129,54 +129,54 @@ SetCameraDebugDirection(my_window *window, game_input *input, my_camera *cam, f3
 }
 
 void
-SetCameraDirection(my_window *window, game_input *input, my_camera *cam, f32 *lastMouseX, f32 *lastMouseY)
+set_camera_direction(Window *window, Game_Input *input, Camera *cam, f32 *last_mouse_x, f32 *last_mouse_y)
 {
     f32 width = (f32)window->width;
     f32 height = (f32)window->height;
-    const f32 edgeThreshold = 10.0f;
+    const f32 edge_threshold = 10.0f;
 
-    if(input->mouseX <= edgeThreshold)
+    if(input->mouse_x <= edge_threshold)
     {
-        firstMouse = true;
-        input->mouseX = width-edgeThreshold-1;
-        SDL_WarpMouseInWindow(window->sdl_window, input->mouseX, input->mouseY);
+        first_mouse = true;
+        input->mouse_x = width-edge_threshold-1;
+        SDL_WarpMouseInWindow(window->sdl_window, input->mouse_x, input->mouse_y);
     }
-    if(input->mouseX >= width - edgeThreshold)
+    if(input->mouse_x >= width - edge_threshold)
     {
-        firstMouse = true;
-        input->mouseX = edgeThreshold;
-        SDL_WarpMouseInWindow(window->sdl_window, input->mouseX, input->mouseY);
-    }
-
-    if(input->mouseY <= edgeThreshold)
-    {
-        firstMouse = true;
-        input->mouseY = height-edgeThreshold-1;
-        SDL_WarpMouseInWindow(window->sdl_window, input->mouseX, input->mouseY);
-    }
-    if(input->mouseY >= height-edgeThreshold)
-    {
-        firstMouse = true;
-        input->mouseY = edgeThreshold;
-        SDL_WarpMouseInWindow(window->sdl_window, input->mouseX, input->mouseY);
+        first_mouse = true;
+        input->mouse_x = edge_threshold;
+        SDL_WarpMouseInWindow(window->sdl_window, input->mouse_x, input->mouse_y);
     }
 
-    if (firstMouse)
+    if(input->mouse_y <= edge_threshold)
     {
-        *lastMouseX = input->mouseX;
-        *lastMouseY = input->mouseY;
-        firstMouse = false;
+        first_mouse = true;
+        input->mouse_y = height-edge_threshold-1;
+        SDL_WarpMouseInWindow(window->sdl_window, input->mouse_x, input->mouse_y);
+    }
+    if(input->mouse_y >= height-edge_threshold)
+    {
+        first_mouse = true;
+        input->mouse_y = edge_threshold;
+        SDL_WarpMouseInWindow(window->sdl_window, input->mouse_x, input->mouse_y);
     }
 
-    f32 mouseOffsetX = input->mouseX - *lastMouseX;
-    f32 mouseOffsetY = *lastMouseY - input->mouseY;
-    *lastMouseX = input->mouseX;
-    *lastMouseY = input->mouseY;
-    mouseOffsetX *= cam->sensitivity;
-    mouseOffsetY *= cam->sensitivity;
+    if (first_mouse)
+    {
+        *last_mouse_x = input->mouse_x;
+        *last_mouse_y = input->mouse_y;
+        first_mouse = false;
+    }
 
-    cam->yaw   += mouseOffsetX;
-    cam->pitch += mouseOffsetY;
+    f32 mouse_offset_x = input->mouse_x - *last_mouse_x;
+    f32 mouse_offset_y = *last_mouse_y - input->mouse_y;
+    *last_mouse_x = input->mouse_x;
+    *last_mouse_y = input->mouse_y;
+    mouse_offset_x *= cam->sensitivity;
+    mouse_offset_y *= cam->sensitivity;
+
+    cam->yaw   += mouse_offset_x;
+    cam->pitch += mouse_offset_y;
 
     if(cam->pitch > 89.0f)
         cam->pitch =  89.0f;
@@ -187,25 +187,25 @@ SetCameraDirection(my_window *window, game_input *input, my_camera *cam, f32 *la
     direction.x = cos(glm::radians(cam->yaw)) * cos(glm::radians(cam->pitch));
     direction.y = sin(glm::radians(cam->pitch));
     direction.z = sin(glm::radians(cam->yaw)) * cos(glm::radians(cam->pitch));
-    glm::vec3 camFront = glm::normalize(direction);
+    glm::vec3 cam_front = glm::normalize(direction);
 
-    cam->front = camFront;
+    cam->front = cam_front;
 }
 
 glm::mat4
-GetViewMatrix(my_camera *camera)
+get_view_matrix(Camera *camera)
 {
     return glm::lookAt(camera->position, camera->position + camera->front, camera->up);
 }
 
 glm::mat4
-MYDEBUGGetViewMatrix(my_camera *camera)
+get_debug_view_matrix(Camera *camera)
 {
     glm::vec3 eye = camera->position;
     glm::vec3 center = camera->position + camera->front;
     glm::vec3 up = camera->up;
 
-    if(camera->options == camFPS)
+    if(camera->options == camera_fps)
     {
         center.y -= eye.y;
         eye.y = 0;
@@ -239,25 +239,30 @@ MYDEBUGGetViewMatrix(my_camera *camera)
     return view;
 }
 
-my_camera inline
-InitCamera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f),
-           f32 yaw = YAW, f32 pitch = PITCH, camOptions options = camDEBUG)
+Camera inline
+init_camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f),
+           f32 yaw = camera_yaw, f32 pitch = camera_pitch, Camera_Mode options = camera_debug)
 {
-    my_camera myCam;
+    Camera my_cam = {};
 
-    myCam.position = position;
-    myCam.vel = glm::vec3(0.0f, 0.0f, 0.0f);
-    myCam.up = up;
+    my_cam.position = position;
+    my_cam.vel = glm::vec3(0.0f, 0.0f, 0.0f);
+    my_cam.up = up;
 
-    myCam.yaw = yaw;
-    myCam.pitch = pitch;
+    my_cam.yaw = yaw;
+    my_cam.pitch = pitch;
+    my_cam.front = glm::normalize(glm::vec3(
+        cos(glm::radians(yaw)) * cos(glm::radians(pitch)),
+        sin(glm::radians(pitch)),
+        sin(glm::radians(yaw)) * cos(glm::radians(pitch))));
+    my_cam.right = glm::normalize(glm::cross(my_cam.front, up));
 
-    myCam.speed = CAMSPEED;
-    myCam.sensitivity = SENSITIVITY;
-    myCam.fov = FOV;
-    myCam.zoom = 0;
+    my_cam.speed = camera_speed;
+    my_cam.sensitivity = camera_sensitivity;
+    my_cam.fov = camera_fov;
+    my_cam.zoom = 0;
 
-    myCam.options = options;
+    my_cam.options = options;
 
-    return myCam;
+    return my_cam;
 }
